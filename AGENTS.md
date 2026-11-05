@@ -1,37 +1,47 @@
-# figma-make-app
+# TextBridge project instructions
 
-React + Vite + Tailwind CSS project running inside Figma Make.
+## Scope
+- This is TextBridge, separate from the expense tracker. Preserve the exported
+  dark green design and reuse suitable React components.
+- Current stage: browser-local demo. Keep its visible notice until a real backend
+  is connected. No deployment without the user's explicit request.
+- Plain text only, up to 10,000 Unicode code points. No accounts, files, payments,
+  passwords, 24-hour option, or one-time reads.
+- Codes are six uppercase symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
+  Normalize lowercase, spaces, and hyphens; reject other invalid input.
+- Expiration: 10 minutes by default, or 1 hour. Repeat reads until expiry.
+- Anyone knowing an active code can retrieve it. Never claim end-to-end
+  encryption, interpret shared text as HTML, or log text/codes.
 
-## Development Server
+## Setup and verification
+- Use pnpm and preserve the lockfile. Run `pnpm install --frozen-lockfile`.
+- Start `pnpm dev` explicitly; local URL is http://127.0.0.1:5173.
+- `pnpm check`: type checking, data tests, and production build.
+- Install browser once with `pnpm exec playwright install chromium`, then use
+  `pnpm test:e2e` for functional, responsive, and accessibility checks.
+- Use `pnpm format` (Prettier). The inherited oxfmt version produced invalid
+  TypeScript and was removed.
+- Verify desktop and mobile changes. Keep test artifacts and data ignored.
 
-A Vite development server is **already running** on `$PORT` (default 8443). You don't need to start it manually.
+## Architecture
+- `src/App.tsx`: UI, demo simulation, and `/` / `/receive` history routing.
+- `src/demo-store.ts`: browser-only data adapter, validation, expiry, demo limits.
+- `src/index.css`: retained export styling with accessibility/responsive repairs.
+- `vite.config.ts`: local tooling. `.figma/` is inactive export provenance.
+- `tests/demo-store.test.ts`: data behavior; `tests/browser/`: user flows.
 
-- Preview URL: The user can access the running app through the preview panel
-- Hot reload: Changes to source files are reflected immediately
+## Next stage
+- Use Functions and Firestore emulators with a separate TextBridge project.
+- Deny direct Firestore access; generate/reserve codes atomically server-side
+  with collision retries, server timestamps, and backend input validation.
+- Enforce expiry on every retrieval, backend creation/guessing limits, deployment
+  abuse protection, and no-store responses. Background cleanup is independent.
+- Test all backend boundaries and report unimplemented protections.
+- Explain live setup and current Blaze billing requirements before deployment.
 
-## Project Structure
-
-This is the canonical project structure. Start with task-relevant files below. Only follow imports or inspect other files when required, when a documented path is missing, or when the repository contradicts this guide.
-
-- `src/main.tsx` - React entrypoint; imports `src/index.css` and mounts `src/App.tsx` into the `#root` element
-- `src/App.tsx` - Primary application component and the usual starting point for UI work
-- `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import
-- `index.html` - Vite HTML shell containing the `#root` element and loading `src/main.tsx`
-- `package.json` - Project dependencies and the Vite build, development, preview, and formatting scripts
-- `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, and Figma Make plugins plus the `@` alias for `src`
-- `.mise.toml` - Toolchain versions for Node.js and pnpm
-
-## Dependencies
-
-- Runtime: React 19 and React DOM 19
-- Styling: Tailwind CSS v4 with the `@tailwindcss/vite` plugin
-- Build tooling: Vite 8, TypeScript 5.7, and `@vitejs/plugin-react`
-- Formatting: oxfmt
-
-## Styling
-
-This project uses **Tailwind CSS v4** through the `@tailwindcss/vite` plugin configured in `vite.config.ts`. `src/index.css` imports Tailwind with `@import 'tailwindcss';`. Use Tailwind utility classes directly in JSX and put global CSS or Tailwind v4 theme customization in `src/index.css`. This scaffold does not need a Tailwind config file or PostCSS config.
-
-`src/main.tsx` imports `src/index.css`, so global font wiring belongs in `src/index.css`. Keep CSS `@import` statements first, then add any `@font-face` rules and font-family defaults there.
-
-Tailwind emits utility classes in `@layer utilities`, and CSS outside any cascade layer overrides every layer regardless of specificity. Put global element styles, such as resets and defaults for `body`, headings, `button`, or `input`, inside `@layer base { ... }` so utility classes on those elements still apply. Tailwind's Preflight already applies `box-sizing: border-box`, removes default margins, and sets `font: inherit` on form controls, so do not repeat those rules.
+## Git and secrets
+- Preserve work/history. Commit checkpoints after verified stages.
+- Keep configuration examples placeholder-only. Never commit shared text,
+  credentials, service-account keys, dependencies, builds, or emulator exports.
+- Target private GitHub repo: `text-share`. Use normal browser sign-in; never
+  request passwords/tokens in chat or force-push over unknown remote history.

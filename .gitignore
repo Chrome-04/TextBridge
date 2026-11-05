@@ -19,3 +19,26 @@ logs/
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+# Local configuration and credentials
+!.env.example
+.DS_Store
+*.pem
+*.key
+*service-account*.json
+*serviceAccount*.json
+*adminsdk*.json
+credentials*.json
+secrets/
+.firebase/
+.runtimeconfig.json
+.firebaserc
+# Test output and local/emulator data
+test-results/
+playwright-report/
+coverage/
+artifacts/
+emulator-data/
+exports/
+*.db
+*.sqlite*
