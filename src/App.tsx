@@ -1,3 +1,4 @@
+import { QRCodeSVG } from 'qrcode.react'
 import { withDemoStore } from './indexed-store'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
@@ -5,6 +6,7 @@ import {
   isValidCode,
   normalizeCode,
   MAX_WORDS,
+  fileIsAllowed,
   MAX_BYTES,
   textBytes,
   ShareError,
@@ -229,64 +231,146 @@ function SendView({
   duration,
   setDuration,
   onGenerate,
+  contentKind,
+  setContentKind,
+  file,
+  setFile,
 }: {
   text: string
   setText: (text: string) => void
   duration: Duration
   setDuration: (duration: Duration) => void
   onGenerate: () => void
+  contentKind: 'text' | 'file'
+  setContentKind: (kind: 'text' | 'file') => void
+  file: File | null
+  setFile: (file: File | null) => void
 }) {
   const { count, bytes } = useMemo(
     () => ({ count: countWords(text), bytes: textBytes(text) }),
     [text],
   )
   const tooLong = count > MAX_WORDS || bytes > MAX_BYTES
+  const valid =
+    contentKind === 'text'
+      ? !!text.trim() && !tooLong
+      : !!file && fileIsAllowed(file)
   return (
     <>
       <Intro
         title="Move text. Skip the friction."
-        description="Notes, links, and code snippets. One short code. No account needed."
+        description="Text, links, code snippets, or a file. No account needed."
       />
       <form
         className="card composer"
         onSubmit={(event) => {
           event.preventDefault()
-          if (text.trim() && !tooLong) onGenerate()
+          if (valid) onGenerate()
         }}
       >
-        <div className="field-head">
-          <label htmlFor="shared-text">Text or link</label>
-          <span
-            id="word-count"
-            className={count > 95000 ? 'count count-warning' : 'count'}
-          >
-            {count.toLocaleString()} / 100,000 words
-          </span>
-        </div>
-        <textarea
-          id="shared-text"
-          aria-describedby={
-            tooLong ? 'word-count size-hint text-error' : 'word-count size-hint'
-          }
-          aria-invalid={tooLong}
-          onChange={(event) => setText(event.target.value)}
-          placeholder={
-            'Paste anything you want to move…\nLinks, notes, or a code snippet.'
-          }
-          rows={8}
-          value={text}
-          spellCheck={false}
-        />
-        <p id="size-hint" className="size-hint">
-          Up to 100,000 words · 20 MiB of text. Words are separated by spaces or
-          line breaks.
-        </p>
-        {tooLong && (
-          <p id="text-error" className="field-error" role="alert">
-            {bytes > MAX_BYTES
-              ? 'This text exceeds 20 MiB. Shorten it to continue.'
-              : `Remove ${(count - MAX_WORDS).toLocaleString()} ${count - MAX_WORDS === 1 ? 'word' : 'words'} to continue.`}
-          </p>
+        <fieldset className="content-choice">
+          <legend>What would you like to share?</legend>
+          <div className="duration-group">
+            {(['text', 'file'] as const).map((kind) => (
+              <label
+                className={
+                  contentKind === kind ? 'duration active' : 'duration'
+                }
+                key={kind}
+              >
+                <input
+                  type="radio"
+                  name="content-kind"
+                  checked={contentKind === kind}
+                  onChange={() => setContentKind(kind)}
+                />
+                {kind === 'text' ? 'Text' : 'File'}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {contentKind === 'text' ? (
+          <>
+            <div className="field-head">
+              <label htmlFor="shared-text">Text or link</label>
+              <span
+                id="word-count"
+                className={count > 95000 ? 'count count-warning' : 'count'}
+              >
+                {count.toLocaleString()} / 100,000 words
+              </span>
+            </div>
+            <textarea
+              id="shared-text"
+              aria-describedby={
+                tooLong
+                  ? 'word-count size-hint text-error'
+                  : 'word-count size-hint'
+              }
+              aria-invalid={tooLong}
+              onChange={(event) => setText(event.target.value)}
+              placeholder={
+                'Paste anything you want to move…\nLinks, notes, or a code snippet.'
+              }
+              rows={8}
+              value={text}
+              spellCheck={false}
+            />
+            <p id="size-hint" className="size-hint">
+              Up to 100,000 words · 20 MiB of text. Words are separated by
+              spaces or line breaks.
+            </p>
+            {tooLong && (
+              <p id="text-error" className="field-error" role="alert">
+                {bytes > MAX_BYTES
+                  ? 'This text exceeds 20 MiB. Shorten it to continue.'
+                  : `Remove ${(count - MAX_WORDS).toLocaleString()} ${count - MAX_WORDS === 1 ? 'word' : 'words'} to continue.`}
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="file-picker">
+            <label htmlFor="shared-file">Choose a file</label>
+            <p id="file-hint">
+              PDF, JPG, PNG, documents, ZIP, and other files under 20 MB. One
+              file per code.
+            </p>
+            <input
+              id="shared-file"
+              type="file"
+              aria-describedby={
+                file && !fileIsAllowed(file)
+                  ? 'file-hint file-error'
+                  : 'file-hint'
+              }
+              aria-invalid={!!file && !fileIsAllowed(file)}
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            />
+            {file && (
+              <div className="file-details">
+                <strong>{file.name}</strong>
+                <span>{formatBytes(file.size)}</span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    setFile(null)
+                    const input = document.getElementById(
+                      'shared-file',
+                    ) as HTMLInputElement
+                    input.value = ''
+                  }}
+                >
+                  Remove file
+                </button>
+              </div>
+            )}
+            {file && !fileIsAllowed(file) && (
+              <p id="file-error" role="alert" className="field-error">
+                Choose a file smaller than 20 MB (20,000,000 bytes).
+              </p>
+            )}
+          </div>
         )}
         <div className="form-footer">
           <fieldset>
@@ -311,11 +395,7 @@ function SendView({
               ))}
             </div>
           </fieldset>
-          <button
-            className="primary-button"
-            disabled={!text.trim() || tooLong}
-            type="submit"
-          >
+          <button className="primary-button" disabled={!valid} type="submit">
             Generate code <ArrowIcon />
           </button>
         </div>
@@ -349,13 +429,18 @@ function CopyButton({ value, label }: { value: string; label: string }) {
         <CopyIcon />
         {status === 'copied' ? 'Copied!' : label}
       </button>
-      <div role="status" className={status === 'idle' ? 'toast' : 'toast show'}>
-        {status === 'copied'
-          ? `${label === 'Copy code' ? 'Code' : 'Text'} copied to clipboard.`
-          : status === 'error'
-            ? 'Could not copy. Select the content and copy it manually.'
-            : ''}
-      </div>
+      {status !== 'idle' && (
+        <div
+          role="status"
+          className={status === 'copied' ? 'sr-only' : 'toast show'}
+        >
+          {status === 'copied'
+            ? `${label.replace('Copy ', '').replace(/^./, (letter) => letter.toUpperCase())} copied to clipboard.`
+            : status === 'error'
+              ? 'Could not copy. Select the content and copy it manually.'
+              : ''}
+        </div>
+      )}
     </>
   )
 }
@@ -383,12 +468,19 @@ function GeneratedView({
   note: SharedNote
   onNew: () => void
 }) {
+  const link = new URL('/receive', window.location.origin)
+  link.hash = note.code
+  const shareLink = link.href
   return (
     <>
       <Intro
         eyebrow="Code ready"
         title="Your sharing code is ready."
-        description="Use this code to retrieve the text before it expires."
+        description={
+          note.file
+            ? `Your file is ready: ${note.file.name}`
+            : 'Use the code or link to retrieve your text before it expires.'
+        }
       />
       <section className="card code-result" aria-labelledby="code-result-title">
         <div className="code-result-main">
@@ -406,6 +498,36 @@ function GeneratedView({
             <span className="status-dot" />
             <Expiry note={note} />
           </div>
+        </div>
+        <div className="sharing-options">
+          <div className="sharing-link">
+            <label htmlFor="share-link">Sharing link</label>
+            <input
+              id="share-link"
+              readOnly
+              value={shareLink}
+              onFocus={(event) => event.target.select()}
+            />
+            <div className="link-actions">
+              <CopyButton value={shareLink} label="Copy link" />
+              <a className="secondary-button" href={shareLink}>
+                Open link
+              </a>
+            </div>
+          </div>
+          <figure className="sharing-qr">
+            <QRCodeSVG
+              value={shareLink}
+              size={192}
+              level="M"
+              marginSize={4}
+              bgColor="#ffffff"
+              fgColor="#000000"
+              role="img"
+              title="QR code for sharing link"
+            />
+            <figcaption>Scan to open the sharing link</figcaption>
+          </figure>
         </div>
         <div className="code-instructions">
           <Icon size={21}>
@@ -426,12 +548,12 @@ function GeneratedView({
             />
           </Icon>
           <p>
-            On the other device, open TextBridge, choose Receive, and enter this
-            code.
+            Use the code, open the link, or scan the QR code to reach Receive.
           </p>
           <small>
-            For now, test Receive in this browser or another tab at the same
-            address. Cross-device sharing is not connected yet.
+            Local demo: links work in this browser only. Scanning with a phone
+            or opening in another browser cannot retrieve this item yet. A
+            shared backend is still required.
           </small>
         </div>
         <div className="result-footer">
@@ -459,7 +581,7 @@ function ReceiveView({
   return (
     <>
       <Intro
-        title="Receive shared text."
+        title="Receive shared content."
         description="Enter the six-character code shown on the sending device."
       />
       <form
@@ -495,10 +617,69 @@ function ReceiveView({
           </p>
         )}
         <button className="primary-button receiver-submit" type="submit">
-          View text <ArrowIcon />
+          View content <ArrowIcon />
         </button>
       </form>
     </>
+  )
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1000) return `${bytes} bytes`
+  const unit = bytes < 1_000_000 ? 'KB' : 'MB'
+  const divisor = unit === 'KB' ? 1000 : 1_000_000
+  return `${(bytes / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unit}`
+}
+
+function FileDownload({ note }: { note: SharedNote }) {
+  const [status, setStatus] = useState('')
+  const [busy, setBusy] = useState(false)
+  const objectUrl = useRef<string | null>(null)
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
+    }
+  }, [])
+  const download = async () => {
+    setBusy(true)
+    setStatus('')
+    try {
+      const current = await withDemoStore((store) => store.retrieve(note.code))
+      if (!mounted.current) return
+      if (!current.blob || !current.file || current.expiresAt <= Date.now())
+        throw new Error('unavailable')
+      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
+      objectUrl.current = URL.createObjectURL(
+        new Blob([current.blob], { type: 'application/octet-stream' }),
+      )
+      const anchor = document.createElement('a')
+      anchor.href = objectUrl.current
+      anchor.download = current.file.name
+      document.body.append(anchor)
+      anchor.click()
+      anchor.remove()
+      setStatus('Download started.')
+    } catch {
+      if (!mounted.current) return
+      setStatus(
+        'Could not download. The item may have expired, storage may be unavailable, or the demo request limit was reached. Try receiving it again.',
+      )
+    } finally {
+      if (mounted.current) setBusy(false)
+    }
+  }
+  return (
+    <div className="file-received">
+      <p className="file-name">{note.file?.name}</p>
+      <p>{formatBytes(note.file?.size ?? 0)} · File</p>
+      <button className="primary-button" disabled={busy} onClick={download}>
+        {busy ? 'Preparing download…' : 'Download file'}
+      </button>
+      <p role="status">{status}</p>
+    </div>
   )
 }
 
@@ -513,25 +694,35 @@ function ReceivedView({
     <>
       <Intro
         eyebrow={`Code ${note.code}`}
-        title="Text received."
-        description="Your text, just as it was sent. Ready for its next stop."
+        title={note.file ? 'File received.' : 'Text received.'}
+        description={
+          note.file
+            ? 'Download your file before it expires.'
+            : 'Your text, just as it was sent. Ready for its next stop.'
+        }
       />
       <section className="card note-card" aria-labelledby="note-title">
         <div className="note-head">
           <div>
             <span className="status-dot" />
-            <span id="note-title">Shared text</span>
+            <span id="note-title">
+              {note.file ? 'Shared file' : 'Shared text'}
+            </span>
           </div>
-          <CopyButton value={note.text} label="Copy text" />
+          {!note.file && <CopyButton value={note.text} label="Copy text" />}
         </div>
-        <pre tabIndex={0} aria-label="Shared text content">
-          {note.text}
-        </pre>
+        {note.file ? (
+          <FileDownload note={note} />
+        ) : (
+          <pre tabIndex={0} aria-label="Shared text content">
+            {note.text}
+          </pre>
+        )}
         <div className="note-footer">
           <p>
             <Expiry note={note} />
             <br />
-            You can retrieve this text again until it expires.
+            You can retrieve this item again until it expires.
           </p>
           <button className="secondary-button" onClick={onAnother}>
             Receive another
@@ -558,7 +749,7 @@ const stateContent: Record<
   invalid: {
     tag: 'Check your input',
     title: 'Something needs another look.',
-    body: 'Use up to 100,000 words (20 MiB maximum), one of the two expiration choices, and a valid six-character code.',
+    body: 'Use up to 100,000 words (20 MiB maximum), or a file under 20 MB, one of the two expiration choices, and a valid six-character code.',
   },
   network: {
     tag: 'Demo connection error',
@@ -622,7 +813,7 @@ function LoadingView({ mode }: { mode: Mode }) {
         {mode === 'send' ? 'Generating code' : 'Checking code'}
       </p>
       <h1>
-        {mode === 'send' ? 'Building your bridge…' : 'Fetching the text…'}
+        {mode === 'send' ? 'Building your bridge…' : 'Fetching your content…'}
       </h1>
       <p>This should only take a moment.</p>
     </section>
@@ -661,7 +852,11 @@ export default function App() {
   const [note, setNote] = useState<SharedNote | null>(null)
   const [text, setText] = useState('')
   const [duration, setDuration] = useState<Duration>('10 minutes')
-  const [code, setCode] = useState('')
+  const [contentKind, setContentKind] = useState<'text' | 'file'>('text')
+  const [file, setFile] = useState<File | null>(null)
+  const [code, setCode] = useState(() =>
+    normalizeCode(window.location.hash.slice(1)),
+  )
   const [failure, setFailure] = useState<Failure>('not-found')
   const [simulation, setSimulation] = useState<Simulation>('normal')
   const request = useRef(0)
@@ -671,23 +866,30 @@ export default function App() {
   const navigate = (next: Mode, updateHistory = true) => {
     request.current++
     const path = next === 'receive' ? '/receive' : '/'
-    if (updateHistory && window.location.pathname !== path)
+    if (
+      updateHistory &&
+      (window.location.pathname !== path || window.location.hash)
+    )
       window.history.pushState({}, '', path)
     setMode(next)
     setView(next)
     setNote(null)
   }
   useEffect(() => {
-    const pop = () =>
+    const pop = () => {
+      setCode(normalizeCode(window.location.hash.slice(1)))
       navigate(
         window.location.pathname.replace(/\/$/, '') === '/receive'
           ? 'receive'
           : 'send',
         false,
       )
+    }
     window.addEventListener('popstate', pop)
+    window.addEventListener('hashchange', pop)
     return () => {
       window.removeEventListener('popstate', pop)
+      window.removeEventListener('hashchange', pop)
       request.current++
     }
   }, [])
@@ -733,13 +935,18 @@ export default function App() {
       if (simulatedFailure !== 'normal') throw new ShareError(simulatedFailure)
       const result = await withDemoStore((store) =>
         operation === 'send'
-          ? store.create(text, duration)
+          ? contentKind === 'file' && file
+            ? store.createFile(file, duration)
+            : store.create(text, duration)
           : store.retrieve(code),
       )
       if (id !== request.current) return
       setNote(result)
       setView(operation === 'send' ? 'generated' : 'received')
-      if (operation === 'send') setText('')
+      if (operation === 'send') {
+        setText('')
+        setFile(null)
+      }
     } catch (error) {
       if (id !== request.current) return
       setNote(null)
@@ -750,7 +957,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main">
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(event) => {
+          event.preventDefault()
+          mainRef.current?.focus()
+        }}
+      >
         Skip to sharing tool
       </a>
       <Header
@@ -784,6 +998,10 @@ export default function App() {
         >
           {view === 'send' && (
             <SendView
+              contentKind={contentKind}
+              setContentKind={setContentKind}
+              file={file}
+              setFile={setFile}
               text={text}
               setText={setText}
               duration={duration}
@@ -828,7 +1046,8 @@ export default function App() {
           )}
         </section>
         <p className="privacy-note">
-          Anyone who knows an active code can read its text until it expires.
+          Anyone with an active code or link can access its content until it
+          expires.
         </p>
         <details className="demo-controls">
           <summary>Demo testing options</summary>
@@ -845,7 +1064,8 @@ export default function App() {
             <option value="rate-limited">Simulate rate limit</option>
           </select>
           <p>
-            Applies once to Generate code or View text. No server is connected.
+            Applies once to Generate code or View content. No server is
+            connected.
           </p>
         </details>
       </main>

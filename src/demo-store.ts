@@ -3,6 +3,8 @@ export type Duration = '10 minutes' | '30 minutes'
 export type SharedNote = {
   code: string
   text: string
+  file?: { name: string; size: number; type: string }
+  blob?: Blob
   duration: Duration | '1 hour'
   expiresAt: number
 }
@@ -16,6 +18,16 @@ export class ShareError extends Error {
   }
 }
 
+export const FILE_LIMIT_BYTES = 20_000_000
+export const fileIsAllowed = (file: Blob) =>
+  file instanceof Blob && file.size < FILE_LIMIT_BYTES
+export const safeFileName = (name: string) =>
+  name.replace(/[\/\\\x00-\x1f\x7f]/g, '_').slice(0, 240) || 'download'
+export type BlobStore = {
+  get(code: string): Blob | undefined
+  set(code: string, blob: Blob): void
+  delete(code: string): void
+}
 export const MAX_WORDS = 100_000
 export const MAX_BYTES = 20 * 1024 * 1024
 export const textBytes = (text: string) =>
@@ -50,9 +62,16 @@ function isNote(value: unknown): value is SharedNote {
     typeof note.code === 'string' &&
     isValidCode(note.code) &&
     typeof note.text === 'string' &&
-    !!note.text.trim() &&
-    countWords(note.text) <= MAX_WORDS &&
-    textBytes(note.text) <= MAX_BYTES &&
+    (note.file
+      ? typeof note.file.name === 'string' &&
+        note.file.name.length > 0 &&
+        typeof note.file.type === 'string' &&
+        Number.isInteger(note.file.size) &&
+        note.file.size >= 0 &&
+        note.file.size < FILE_LIMIT_BYTES
+      : !!note.text.trim() &&
+        countWords(note.text) <= MAX_WORDS &&
+        textBytes(note.text) <= MAX_BYTES) &&
     ['10 minutes', '30 minutes', '1 hour'].includes(note.duration) &&
     Number.isFinite(note.expiresAt)
   )
@@ -62,6 +81,7 @@ export function createDemoStore(
   storage: Storage,
   now = Date.now,
   generateCode = makeCode,
+  blobs?: BlobStore,
 ) {
   function safely<T>(operation: () => T): T {
     try {
@@ -81,10 +101,12 @@ export function createDemoStore(
       value = JSON.parse(raw)
     } catch {
       storage.removeItem(key)
+      blobs?.delete(code)
       return null
     }
     if (!isNote(value) || value.code !== code || value.expiresAt <= now()) {
       storage.removeItem(key)
+      blobs?.delete(code)
       return null
     }
     return value
@@ -146,6 +168,38 @@ export function createDemoStore(
         throw new ShareError('rate-limited')
       })
     },
+    createFile(file: File, duration: Duration): SharedNote {
+      return safely(() => {
+        if (
+          !blobs ||
+          !fileIsAllowed(file) ||
+          typeof file.name !== 'string' ||
+          !['10 minutes', '30 minutes'].includes(duration)
+        )
+          throw new ShareError('invalid')
+        limit('create')
+        cleanup()
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const code = generateCode()
+          if (!isValidCode(code) || read(code)) continue
+          const note: SharedNote = {
+            code,
+            text: '',
+            file: {
+              name: safeFileName(file.name),
+              size: file.size,
+              type: file.type || 'application/octet-stream',
+            },
+            duration,
+            expiresAt: now() + durationMs(duration),
+          }
+          blobs.set(code, file)
+          storage.setItem(NOTE_PREFIX + code, JSON.stringify(note))
+          return note
+        }
+        throw new ShareError('rate-limited')
+      })
+    },
     retrieve(input: string): SharedNote {
       return safely(() => {
         limit('receive')
@@ -153,6 +207,12 @@ export function createDemoStore(
         if (!isValidCode(code)) throw new ShareError('invalid')
         const note = read(code)
         if (!note) throw new ShareError('not-found')
+        if (note.file) {
+          const blob = blobs?.get(code)
+          if (!blob || blob.size !== note.file.size)
+            throw new ShareError('not-found')
+          return { ...note, blob }
+        }
         return note
       })
     },

@@ -14,7 +14,7 @@ async function send(page: Page, text: string) {
 async function receive(page: Page, code: string) {
   await page.getByRole('tab', { name: 'Receive', exact: true }).click()
   await page.getByLabel('Enter sharing code').fill(code)
-  await page.getByRole('button', { name: 'View text' }).click()
+  await page.getByRole('button', { name: 'View content' }).click()
   await expect(
     page.getByRole('heading', { name: 'Text received.' }),
   ).toBeVisible()
@@ -129,7 +129,7 @@ test('word boundaries, default duration, and accessible responsive send/receive'
   })
   for (const code of ['', 'abc', 'abc2345', 'abc23!', 'O0I123']) {
     await page.getByLabel('Enter sharing code').fill(code)
-    await page.getByRole('button', { name: 'View text' }).click()
+    await page.getByRole('button', { name: 'View content' }).click()
     await expect(page.getByRole('alert')).toContainText('Use exactly 6')
   }
 })
@@ -139,7 +139,7 @@ test('unknown codes, simulated network/rate errors, and draft recovery', async (
 }) => {
   await page.goto('/receive')
   await page.getByLabel('Enter sharing code').fill('ABC234')
-  await page.getByRole('button', { name: 'View text' }).click()
+  await page.getByRole('button', { name: 'View content' }).click()
   await expect(
     page.getByRole('heading', { name: 'Code not found or expired.' }),
   ).toBeVisible()
@@ -176,7 +176,7 @@ test('expired text disappears while open and cannot be retrieved again', async (
   ).toBeVisible()
   await expect(page.locator('pre')).toHaveCount(0)
   await page.getByRole('button', { name: 'Back to Receive' }).click()
-  await page.getByRole('button', { name: 'View text' }).click()
+  await page.getByRole('button', { name: 'View content' }).click()
   await expect(
     page.getByRole('heading', { name: 'Code not found or expired.' }),
   ).toBeVisible()

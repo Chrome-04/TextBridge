@@ -5,12 +5,15 @@
   dark green design and reuse suitable React components.
 - Current stage: browser-local demo. Keep its visible notice until a real backend
   is connected. No deployment without the user's explicit request.
-- Plain text only, up to 100,000 whitespace-separated words and 20 MiB UTF-8. No accounts, files, payments,
-  passwords, 24-hour option, or one-time reads.
+- Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
+  OR one file strictly under 20,000,000 bytes. No accounts, payments, passwords,
+  24-hour option, or one-time reads. Download files; never embed active content.
+- Generate a code, same-origin /receive#CODE link, and locally rendered QR code.
+  Links prefill Receive; they do not bypass expiry. Keep the browser-only warning.
 - Codes are six uppercase symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
   Normalize lowercase, spaces, and hyphens; reject other invalid input.
 - Expiration: 10 minutes by default, or 30 minutes. Repeat reads until expiry.
-- Anyone knowing an active code can retrieve it. Never claim end-to-end
+- Anyone knowing an active code or link can retrieve its content. Never claim end-to-end
   encryption, interpret shared text as HTML, or log text/codes.
 
 ## Setup and verification
@@ -40,6 +43,9 @@
   abuse protection, and no-store responses. Background cleanup is independent.
 - Large notes exceed Firestore document limits; plan bounded chunks, metadata,
   request-size handling, and whole-note expiry before backend implementation.
+- Add Storage emulator support for files, bounded uploads, server expiry checks
+  before downloads, safe attachment responses, abuse controls, and blob cleanup.
+  Never use permanent public download links that bypass expiry.
 - Test all backend boundaries and report unimplemented protections.
 - Explain live setup and current Blaze billing requirements before deployment.
 

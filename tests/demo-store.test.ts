@@ -9,6 +9,8 @@ import {
   ShareError,
   NOTE_PREFIX,
   MAX_BYTES,
+  FILE_LIMIT_BYTES,
+  safeFileName,
   type Duration,
 } from '../src/demo-store.ts'
 
@@ -45,6 +47,78 @@ test('multiple notes survive new adapters and repeat retrieval, preserving exact
   for (let i = 0; i < 2; i++)
     assert.equal(createDemoStore(storage).retrieve(first.code).text, text)
   assert.equal(store.retrieve(second.code).text, 'another note')
+})
+
+test('files preserve exact bytes and metadata, repeat reads, and expire with their blobs', async () => {
+  let time = 1000
+  const storage = memoryStorage()
+  const blobs = new Map<string, Blob>()
+  const store = createDemoStore(storage, () => time, undefined, blobs)
+  const bytes = new Uint8Array([0, 255, 12, 13, 10, 200])
+  const file = new File([bytes], 'မြန်မာ-日本.pdf', { type: 'application/pdf' })
+  const note = store.createFile(file, '30 minutes')
+  assert.equal(note.file?.name, file.name)
+  assert.equal(note.file?.size, bytes.length)
+  assert.equal(note.expiresAt, 1801000)
+  for (let i = 0; i < 2; i++) {
+    const received = createDemoStore(
+      storage,
+      () => time,
+      undefined,
+      blobs,
+    ).retrieve(note.code)
+    assert.deepEqual(new Uint8Array(await received.blob!.arrayBuffer()), bytes)
+  }
+  time = note.expiresAt
+  assert.throws(() => store.retrieve(note.code), fails('not-found'))
+  assert.equal(blobs.has(note.code), false)
+  assert.equal(storage.getItem(NOTE_PREFIX + note.code), null)
+})
+
+test('file boundary is strictly under 20 MB; names and duration are validated', () => {
+  const store = createDemoStore(
+    memoryStorage(),
+    Date.now,
+    undefined,
+    new Map<string, Blob>(),
+  )
+  const large = new Uint8Array(FILE_LIMIT_BYTES)
+  assert.ok(
+    store.createFile(new File([large.subarray(1)], 'large.jpg'), '10 minutes'),
+  )
+  assert.throws(
+    () => store.createFile(new File([large], 'too-large.pdf'), '10 minutes'),
+    fails('invalid'),
+  )
+  assert.throws(
+    () => store.createFile(new File(['x'], 'note.txt'), '1 hour' as Duration),
+    fails('invalid'),
+  )
+  assert.equal(safeFileName('../test\\name\u0000.pdf'), '.._test_name_.pdf')
+  assert.equal(safeFileName(''), 'download')
+})
+
+test('text and files share collision protection and creation limits; missing blobs fail', () => {
+  const codes = ['ABC234', 'ABC234', 'DEF567', 'GHJ678', 'JKL789', 'MNP892']
+  const blobs = new Map<string, Blob>()
+  const store = createDemoStore(
+    memoryStorage(),
+    Date.now,
+    () => codes.shift()!,
+    blobs,
+  )
+  store.create('original', '10 minutes')
+  const file = new File(['data'], 'test.txt')
+  const note = store.createFile(file, '10 minutes')
+  assert.equal(note.code, 'DEF567')
+  assert.equal(store.retrieve('ABC234').text, 'original')
+  blobs.delete(note.code)
+  assert.throws(() => store.retrieve(note.code), fails('not-found'))
+  for (let i = 0; i < 3; i++) store.createFile(file, '10 minutes')
+  assert.throws(
+    () => store.createFile(file, '10 minutes'),
+    fails('rate-limited'),
+  )
 })
 
 test('normalizes only whitespace, hyphens, and case; rejects malformed codes', () => {

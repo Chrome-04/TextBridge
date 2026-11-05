@@ -6,7 +6,7 @@ export function withDemoStore<T>(
   operation: (store: ReturnType<typeof createDemoStore>) => T,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    const opening = indexedDB.open('textbridge-demo', 1)
+    const opening = indexedDB.open('textbridge-demo', 2)
     let openingFailed = false
     const timeout = setTimeout(() => {
       openingFailed = true
@@ -17,7 +17,12 @@ export function withDemoStore<T>(
       clearTimeout(timeout)
       reject(new ShareError('storage'))
     }
-    opening.onupgradeneeded = () => opening.result.createObjectStore('records')
+    opening.onupgradeneeded = () => {
+      const db = opening.result
+      if (!db.objectStoreNames.contains('records'))
+        db.createObjectStore('records')
+      if (!db.objectStoreNames.contains('files')) db.createObjectStore('files')
+    }
     opening.onerror = fail
     opening.onblocked = fail
     opening.onsuccess = () => {
@@ -27,8 +32,12 @@ export function withDemoStore<T>(
         db.close()
         return
       }
-      const transaction = db.transaction('records', 'readwrite')
+      const transaction = db.transaction(['records', 'files'], 'readwrite')
       const records = transaction.objectStore('records')
+      const files = transaction.objectStore('files')
+      const blobs = new Map<string, Blob>()
+      const dirtyBlobs = new Set<string>()
+      let loaded = 0
       const values = new Map<string, string>()
       const dirty = new Set<string>()
       let result: T
@@ -76,6 +85,20 @@ export function withDemoStore<T>(
           entry.continue()
           return
         }
+        applyOperation()
+      }
+      const fileCursor = files.openCursor()
+      fileCursor.onsuccess = () => {
+        const entry = fileCursor.result
+        if (entry) {
+          blobs.set(String(entry.key), entry.value)
+          entry.continue()
+          return
+        }
+        applyOperation()
+      }
+      function applyOperation() {
+        if (++loaded < 2) return
         if (!values.has('migration:v1')) {
           try {
             for (let i = 0; i < localStorage.length; i++) {
@@ -97,9 +120,30 @@ export function withDemoStore<T>(
           storage.setItem('migration:v1', 'done')
         }
         try {
-          result = operation(createDemoStore(storage))
+          result = operation(
+            createDemoStore(storage, Date.now, undefined, {
+              get: (code) => blobs.get(code),
+              set: (code, blob) => {
+                blobs.set(code, blob)
+                dirtyBlobs.add(code)
+              },
+              delete: (code) => {
+                blobs.delete(code)
+                dirtyBlobs.add(code)
+              },
+            }),
+          )
         } catch (error) {
           operationError = error
+        }
+        if (operationError && !(operationError instanceof ShareError)) {
+          transaction.abort()
+          return
+        }
+        for (const code of dirtyBlobs) {
+          const blob = blobs.get(code)
+          if (blob) files.put(blob, code)
+          else files.delete(code)
         }
         // Commit failed-lookup counters too, so guessing limits still apply.
         for (const key of dirty) {
