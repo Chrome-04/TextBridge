@@ -5,11 +5,11 @@
   dark green design and reuse suitable React components.
 - Current stage: browser-local demo. Keep its visible notice until a real backend
   is connected. No deployment without the user's explicit request.
-- Plain text only, up to 10,000 Unicode code points. No accounts, files, payments,
+- Plain text only, up to 100,000 whitespace-separated words and 20 MiB UTF-8. No accounts, files, payments,
   passwords, 24-hour option, or one-time reads.
 - Codes are six uppercase symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
   Normalize lowercase, spaces, and hyphens; reject other invalid input.
-- Expiration: 10 minutes by default, or 1 hour. Repeat reads until expiry.
+- Expiration: 10 minutes by default, or 30 minutes. Repeat reads until expiry.
 - Anyone knowing an active code can retrieve it. Never claim end-to-end
   encryption, interpret shared text as HTML, or log text/codes.
 
@@ -25,7 +25,9 @@
 
 ## Architecture
 - `src/App.tsx`: UI, demo simulation, and `/` / `/receive` history routing.
-- `src/demo-store.ts`: browser-only data adapter, validation, expiry, demo limits.
+- `src/demo-store.ts`: validation, expiry, and demo limits.
+- `src/indexed-store.ts`: IndexedDB transaction adapter and legacy localStorage migration.
+- Support light/dark themes with a persisted choice; default to system preference.
 - `src/index.css`: retained export styling with accessibility/responsive repairs.
 - `vite.config.ts`: local tooling. `.figma/` is inactive export provenance.
 - `tests/demo-store.test.ts`: data behavior; `tests/browser/`: user flows.
@@ -36,6 +38,8 @@
   with collision retries, server timestamps, and backend input validation.
 - Enforce expiry on every retrieval, backend creation/guessing limits, deployment
   abuse protection, and no-store responses. Background cleanup is independent.
+- Large notes exceed Firestore document limits; plan bounded chunks, metadata,
+  request-size handling, and whole-note expiry before backend implementation.
 - Test all backend boundaries and report unimplemented protections.
 - Explain live setup and current Blaze billing requirements before deployment.
 

@@ -18,7 +18,7 @@ Open <http://127.0.0.1:5173>. Receive opens directly at
 <http://127.0.0.1:5173/receive>. Stop the server with Ctrl+C in its terminal.
 No `.env` file is needed; `.env.example` contains commented placeholders only.
 
-1. Paste a note, link, or snippet. Choose 10 minutes (default) or 1 hour.
+1. Paste a note, link, or snippet. Choose 10 minutes (default) or 30 minutes.
 2. Generate and copy the six-character code.
 3. Select Receive, or open `/receive` in another tab **in the same browser and
    at the same address**. Paste the code and select View text.
@@ -27,7 +27,7 @@ No `.env` file is needed; `.env.example` contains commented placeholders only.
 `localhost` and `127.0.0.1` have separate storage. Private windows, other profiles,
 and other devices cannot retrieve demo notes. Generated notes survive refresh;
 unsent drafts do not survive a full reload. Text is stored unencrypted in
-localStorage. Anyone knowing an active code can read its text; there is no
+IndexedDB. Anyone knowing an active code can read its text; there is no
 end-to-end encryption. Use sample data for this demo.
 
 Expand **Demo testing options** to simulate a network failure or rate limit on
@@ -40,7 +40,7 @@ Clipboard failures show manual-copy instructions instead of claiming success.
 ```sh
 pnpm check                 # TypeScript, 9 data tests, production build
 pnpm exec playwright install chromium  # Once per machine
-pnpm test:e2e              # 21 browser cases, including accessibility scans
+pnpm test:e2e              # 30 browser cases, including accessibility scans
 pnpm preview              # Optional built-app preview at 127.0.0.1:4173
 pnpm format               # Format source safely with Prettier
 ```
@@ -58,7 +58,7 @@ real-device testing; they do not prove complete accessibility.
 - `src/App.tsx`: forms, results/errors, clipboard feedback, route history, and
   request simulation. The export's components and icons are reused. React renders
   shared text inside `<pre>`; shared content is never interpreted as HTML.
-- `src/demo-store.ts`: browser-only data adapter. Each code gets its own record;
+- `src/demo-store.ts`: browser-only data validation/operations adapter. Each code gets its own record;
   input validation, collision retries, expiry, and demo limits live here. Stage 2
   will replace this boundary with calls to Firebase backend functions.
 - `src/index.css`: exported dark green styling with responsive and accessibility
@@ -68,18 +68,31 @@ real-device testing; they do not prove complete accessibility.
   The old export formatter generated invalid TypeScript; Prettier replaces it.
 - `tests/`: data tests and browser regressions using synthetic notes only.
 
-The 10,000-character limit counts Unicode code points: a simple emoji counts as
-one, but combined emoji/accent sequences may contain several code points.
-Over-limit text remains editable and cannot be sent; it is not silently cut off.
-Code normalization removes whitespace/hyphens and uppercases letters. Other
-invalid symbols and excess characters are rejected, not truncated.
+The limit is **100,000 words and 20 MiB of UTF-8 text** per note. A word is a
+non-whitespace run: spaces, tabs, and line breaks separate words. URLs and code
+tokens count too. Text without spaces counts as one run; the byte limit still
+applies. Over-limit text remains editable and is never silently truncated.
 
-Expiry is checked on every read. Open results are cleared within one second and
+`src/indexed-store.ts` persists notes in IndexedDB, using one read/write
+transaction per operation. This supports large documents and serializes requests
+across tabs. Existing localStorage notes migrate automatically; any old one-hour
+notes retain their original expiration, but new notes only allow 10 or 30 minutes.
+The demo adapter currently reads local records into memory per operation; it is
+intended for a small local demo collection, not a production database.
+
+Use the header's Light mode / Dark mode button. The first visit follows the
+system color preference; your choice is saved locally for future visits. Themes
+still switch when preference storage is unavailable.
+
+Expiry is checked on every read. Open results clear within one second and are
 checked again when returning to the tab. Expired records are cleaned up on
 creation and reads; cleanup does not run while the browser is closed. Expiry
-cannot revoke a copy someone already made. Demo time comes from the device clock;
-localStorage is not a distributed transaction. Local server responses use
-`Cache-Control: no-store`. There is no service worker or backend response cache.
+cannot revoke a copy someone already made. Demo time comes from the device clock.
+Local server responses use `Cache-Control: no-store`; there is no service worker.
+
+Browser storage remains subject to device capacity and eviction. A failed write
+shows an error and keeps the draft; a code is shown only after the transaction
+commits. See [MDN's browser storage guidance](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria).
 
 ## Stage 2 — pending, not implemented
 
@@ -88,7 +101,11 @@ Develop locally with Functions and Firestore emulators. Planned architecture:
 browser → callable backend functions → Firestore.
 
 - Generate codes securely on the backend; reserve atomically and retry collisions.
-- Validate size/expiration on the server; use server-generated timestamps.
+- Validate word/byte limits and expiration on the server; use server timestamps.
+- Large notes can exceed Firestore's 1 MiB document limit. Stage 2 must split text
+  into bounded chunks behind a metadata record, enforce expiry for the whole note,
+  and account for function payload limits. Do not store every note in one document.
+  See [Firestore limits](https://firebase.google.com/docs/firestore/quotas).
 - Deny direct browser Firestore access and check expiry on every retrieval.
 - Add server creation/guessing limits, deployment abuse protection, and no-store
   responses. Never log shared text or sharing codes.

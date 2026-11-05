@@ -1,9 +1,9 @@
 // Browser-only adapter. Replace this boundary with Firebase functions in Stage 2.
-export type Duration = '10 minutes' | '1 hour'
+export type Duration = '10 minutes' | '30 minutes'
 export type SharedNote = {
   code: string
   text: string
-  duration: Duration
+  duration: Duration | '1 hour'
   expiresAt: number
 }
 export type Failure =
@@ -16,16 +16,24 @@ export class ShareError extends Error {
   }
 }
 
-export const MAX_CHARACTERS = 10_000
+export const MAX_WORDS = 100_000
+export const MAX_BYTES = 20 * 1024 * 1024
+export const textBytes = (text: string) =>
+  new TextEncoder().encode(text).byteLength
 export const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const NOTE_PREFIX = 'textbridge:demo:v1:note:'
 const RATE_PREFIX = 'textbridge:demo:v1:rate:'
-export const countCharacters = (text: string) => Array.from(text).length
+// A word is a run of non-whitespace, including URLs, emoji, and code tokens.
+export const countWords = (text: string) => {
+  let count = 0
+  for (const _word of text.matchAll(/\S+/gu)) count++
+  return count
+}
 export const normalizeCode = (code: string) =>
   code.toUpperCase().replace(/[\s-]/g, '')
 export const isValidCode = (code: string) => /^[A-HJ-NP-Z2-9]{6}$/.test(code)
 export const durationMs = (duration: Duration) =>
-  duration === '10 minutes' ? 600_000 : 3_600_000
+  duration === '10 minutes' ? 600_000 : 1_800_000
 
 export function makeCode() {
   // 32 symbols divide 256 evenly, so each symbol is equally likely.
@@ -43,8 +51,9 @@ function isNote(value: unknown): value is SharedNote {
     isValidCode(note.code) &&
     typeof note.text === 'string' &&
     !!note.text.trim() &&
-    countCharacters(note.text) <= MAX_CHARACTERS &&
-    (note.duration === '10 minutes' || note.duration === '1 hour') &&
+    countWords(note.text) <= MAX_WORDS &&
+    textBytes(note.text) <= MAX_BYTES &&
+    ['10 minutes', '30 minutes', '1 hour'].includes(note.duration) &&
     Number.isFinite(note.expiresAt)
   )
 }
@@ -115,8 +124,9 @@ export function createDemoStore(
         if (
           typeof text !== 'string' ||
           !text.trim() ||
-          countCharacters(text) > MAX_CHARACTERS ||
-          !['10 minutes', '1 hour'].includes(duration)
+          countWords(text) > MAX_WORDS ||
+          textBytes(text) > MAX_BYTES ||
+          !['10 minutes', '30 minutes'].includes(duration)
         )
           throw new ShareError('invalid')
         limit('create')

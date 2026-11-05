@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { withDemoStore } from './indexed-store'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
-  createDemoStore,
-  countCharacters,
+  countWords,
   isValidCode,
   normalizeCode,
-  MAX_CHARACTERS,
+  MAX_WORDS,
+  MAX_BYTES,
+  textBytes,
   ShareError,
   type Duration,
   type SharedNote,
@@ -89,7 +91,11 @@ function Brand({ onClick }: { onClick: () => void }) {
 function Header({
   onSend,
   onReceive,
+  theme,
+  onTheme,
 }: {
+  theme: 'light' | 'dark'
+  onTheme: () => void
   onSend: () => void
   onReceive: () => void
 }) {
@@ -104,6 +110,14 @@ function Header({
           <span className="nav-divider" />
           <button className="nav-link" onClick={onReceive}>
             Receive text
+          </button>
+          <button
+            className="theme-toggle"
+            onClick={onTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
+            {theme === 'dark' ? 'Light' : 'Dark'} mode
           </button>
         </nav>
       </div>
@@ -222,8 +236,11 @@ function SendView({
   setDuration: (duration: Duration) => void
   onGenerate: () => void
 }) {
-  const count = countCharacters(text)
-  const tooLong = count > MAX_CHARACTERS
+  const { count, bytes } = useMemo(
+    () => ({ count: countWords(text), bytes: textBytes(text) }),
+    [text],
+  )
+  const tooLong = count > MAX_WORDS || bytes > MAX_BYTES
   return (
     <>
       <Intro
@@ -240,16 +257,16 @@ function SendView({
         <div className="field-head">
           <label htmlFor="shared-text">Text or link</label>
           <span
-            id="character-count"
-            className={count > 9500 ? 'count count-warning' : 'count'}
+            id="word-count"
+            className={count > 95000 ? 'count count-warning' : 'count'}
           >
-            {count.toLocaleString()} / 10,000
+            {count.toLocaleString()} / 100,000 words
           </span>
         </div>
         <textarea
           id="shared-text"
           aria-describedby={
-            tooLong ? 'character-count text-error' : 'character-count'
+            tooLong ? 'word-count size-hint text-error' : 'word-count size-hint'
           }
           aria-invalid={tooLong}
           onChange={(event) => setText(event.target.value)}
@@ -260,17 +277,22 @@ function SendView({
           value={text}
           spellCheck={false}
         />
+        <p id="size-hint" className="size-hint">
+          Up to 100,000 words · 20 MiB of text. Words are separated by spaces or
+          line breaks.
+        </p>
         {tooLong && (
           <p id="text-error" className="field-error" role="alert">
-            Your text is over the limit. Remove{' '}
-            {(count - MAX_CHARACTERS).toLocaleString()} characters to continue.
+            {bytes > MAX_BYTES
+              ? 'This text exceeds 20 MiB. Shorten it to continue.'
+              : `Remove ${(count - MAX_WORDS).toLocaleString()} ${count - MAX_WORDS === 1 ? 'word' : 'words'} to continue.`}
           </p>
         )}
         <div className="form-footer">
           <fieldset>
             <legend>Keep for</legend>
             <div className="duration-group">
-              {(['10 minutes', '1 hour'] as Duration[]).map((option) => (
+              {(['10 minutes', '30 minutes'] as Duration[]).map((option) => (
                 <label
                   className={
                     duration === option ? 'duration active' : 'duration'
@@ -536,7 +558,7 @@ const stateContent: Record<
   invalid: {
     tag: 'Check your input',
     title: 'Something needs another look.',
-    body: 'Use up to 10,000 characters, one of the two expiration choices, and a valid six-character code.',
+    body: 'Use up to 100,000 words (20 MiB maximum), one of the two expiration choices, and a valid six-character code.',
   },
   network: {
     tag: 'Demo connection error',
@@ -608,6 +630,28 @@ function LoadingView({ mode }: { mode: Mode }) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('textbridge:theme')
+      if (saved === 'light' || saved === 'dark') return saved
+    } catch {
+      /* Theme still works without persistence. */
+    }
+    return window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light'
+      : 'dark'
+  })
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme === 'light' ? '#f6f9f6' : '#0b0d0c')
+    try {
+      localStorage.setItem('textbridge:theme', theme)
+    } catch {
+      /* Optional preference only. */
+    }
+  }, [theme])
   const [mode, setMode] = useState<Mode>(() =>
     window.location.pathname.replace(/\/$/, '') === '/receive'
       ? 'receive'
@@ -661,7 +705,7 @@ export default function App() {
         setFailure('not-found')
         setView('failure')
         try {
-          createDemoStore(localStorage).cleanup()
+          void withDemoStore((store) => store.cleanup()).catch(() => {})
         } catch {
           /* Display expiry even if storage is blocked. */
         }
@@ -687,15 +731,17 @@ export default function App() {
     if (id !== request.current) return
     try {
       if (simulatedFailure !== 'normal') throw new ShareError(simulatedFailure)
-      const store = createDemoStore(localStorage)
-      const result =
+      const result = await withDemoStore((store) =>
         operation === 'send'
           ? store.create(text, duration)
-          : store.retrieve(code)
+          : store.retrieve(code),
+      )
+      if (id !== request.current) return
       setNote(result)
       setView(operation === 'send' ? 'generated' : 'received')
       if (operation === 'send') setText('')
     } catch (error) {
+      if (id !== request.current) return
       setNote(null)
       setFailure(error instanceof ShareError ? error.kind : 'storage')
       setView('failure')
@@ -708,6 +754,8 @@ export default function App() {
         Skip to sharing tool
       </a>
       <Header
+        theme={theme}
+        onTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         onReceive={() => navigate('receive')}
         onSend={() => navigate('send')}
       />

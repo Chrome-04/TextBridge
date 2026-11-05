@@ -37,6 +37,7 @@ test('send, copy, second note, cross-tab retrieval, reload, repeat reads, and sa
   page,
   context,
 }, info) => {
+  test.setTimeout(120_000)
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.goto('/')
   const text =
@@ -57,11 +58,11 @@ test('send, copy, second note, cross-tab retrieval, reload, repeat reads, and sa
   await expect(
     page.getByRole('radio', { name: '10 minutes', exact: true }),
   ).toBeChecked()
-  await page.getByRole('radio', { name: '1 hour', exact: true }).check()
+  await page.getByRole('radio', { name: '30 minutes', exact: true }).check()
   const second = await send(page, 'second note')
   expect(second).not.toBe(code)
   await expect(page.locator('.expiry-row')).toContainText(
-    '1 hour from creation',
+    '30 minutes from creation',
   )
   const anotherTab = await context.newPage()
   await anotherTab.goto('/receive')
@@ -91,7 +92,7 @@ test('send, copy, second note, cross-tab retrieval, reload, repeat reads, and sa
   await expect(anotherTab.locator('pre')).toHaveText('second note')
 })
 
-test('character boundaries, default duration, and accessible responsive send/receive', async ({
+test('word boundaries, default duration, and accessible responsive send/receive', async ({
   page,
 }, info) => {
   await page.goto('/')
@@ -107,16 +108,18 @@ test('character boundaries, default duration, and accessible responsive send/rec
     path: `artifacts/${info.project.name}-send.png`,
     fullPage: true,
   })
-  await page.getByLabel('Text or link').fill('🌉'.repeat(10001))
-  await expect(page.getByRole('alert')).toContainText('Remove 1 characters')
+  await page.getByLabel('Text or link').fill('word '.repeat(100001))
+  await expect(page.getByRole('alert')).toContainText('Remove 1 word')
   await expect(
     page.getByRole('button', { name: 'Generate code' }),
   ).toBeDisabled()
-  await page.getByLabel('Text or link').fill('🌉'.repeat(10000))
+  await page.getByLabel('Text or link').fill('word '.repeat(100000))
   await expect(
     page.getByRole('button', { name: 'Generate code' }),
   ).toBeEnabled()
-  await expect(page.locator('#character-count')).toHaveText('10,000 / 10,000')
+  await expect(page.locator('#word-count')).toHaveText(
+    '100,000 / 100,000 words',
+  )
   await page.goto('/receive')
   await noOverflow(page)
   await accessible(page)
@@ -208,13 +211,15 @@ test('keyboard tabs, browser navigation, and cancellation during loading', async
   ).toBeFocused()
   await page.goBack()
   await expect(page.getByLabel('Text or link')).toBeVisible()
+  await page.clock.install()
+  await page.clock.pauseAt(new Date())
   await page.getByLabel('Text or link').fill('cancel this request')
   await page.getByRole('button', { name: 'Generate code' }).click()
   await expect(page.getByRole('status')).toContainText('Building your bridge')
   await page.getByRole('tab', { name: 'Receive', exact: true }).click()
   await expect(page.getByLabel('Enter sharing code')).toBeVisible()
   // After the delayed operation would finish, navigation must still win.
-  await page.waitForTimeout(700)
+  await page.clock.runFor(700)
   await expect(page.getByLabel('Enter sharing code')).toBeVisible()
 })
 
@@ -222,7 +227,7 @@ test('storage errors are actionable and do not lose the draft', async ({
   page,
 }) => {
   await page.addInitScript(() => {
-    Storage.prototype.setItem = () => {
+    IDBFactory.prototype.open = () => {
       throw new Error('storage disabled')
     }
   })
@@ -236,4 +241,78 @@ test('storage errors are actionable and do not lose the draft', async ({
   ).toBeVisible()
   await page.getByRole('button', { name: 'Back to Send' }).click()
   await expect(page.getByLabel('Text or link')).toHaveValue('Keep this text')
+})
+
+test('100,000 words larger than old browser storage survive refresh and copy intact', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.goto('/')
+  // 6.1 MB, deliberately larger than localStorage's usual 5 MiB allowance.
+  const text = ('abcdefghij'.repeat(6) + ' ').repeat(100_000)
+  const code = await send(page, text)
+  await page.reload()
+  await receive(page, code)
+  expect(await page.locator('pre').textContent()).toBe(text)
+  await noOverflow(page)
+  await page.getByRole('button', { name: 'Copy text' }).click()
+  await expect(page.getByRole('status')).toContainText('Text copied')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text)
+})
+
+test('light and dark themes are accessible and the chosen mode survives reload', async ({
+  page,
+}, info) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  for (const theme of ['light', 'dark']) {
+    if (theme === 'dark')
+      await page.getByRole('button', { name: 'Switch to dark mode' }).click()
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await noOverflow(page)
+    await accessible(page)
+    await page.screenshot({
+      path: `artifacts/${info.project.name}-${theme}.png`,
+      fullPage: true,
+    })
+    await expect(
+      page.getByRole('radio', { name: '1 hour', exact: true }),
+    ).toHaveCount(0)
+    const code = await send(page, 'Theme preview 🌉\nconst text = "hello";')
+    await accessible(page)
+    await receive(page, code)
+    await accessible(page)
+    await page.getByRole('tab', { name: 'Send', exact: true }).click()
+  }
+})
+
+test('existing local notes migrate without shortening their original expiration', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'textbridge:demo:v1:note:ABC234',
+      JSON.stringify({
+        code: 'ABC234',
+        text: 'Existing demo note',
+        duration: '1 hour',
+        expiresAt: Date.now() + 3_600_000,
+      }),
+    ),
+  )
+  await receive(page, 'ABC234')
+  await expect(page.locator('pre')).toHaveText('Existing demo note')
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem('textbridge:demo:v1:note:ABC234'),
+    ),
+  ).toBeNull()
+  await page.reload()
+  await receive(page, 'ABC234')
+  await expect(page.locator('pre')).toHaveText('Existing demo note')
 })

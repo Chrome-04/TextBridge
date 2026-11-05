@@ -2,12 +2,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   createDemoStore,
-  countCharacters,
+  countWords,
   normalizeCode,
   isValidCode,
   makeCode,
   ShareError,
   NOTE_PREFIX,
+  MAX_BYTES,
   type Duration,
 } from '../src/demo-store.ts'
 
@@ -39,7 +40,7 @@ test('multiple notes survive new adapters and repeat retrieval, preserving exact
     'a'.repeat(2000) +
     '\n'
   const first = store.create(text, '10 minutes')
-  const second = store.create('another note', '1 hour')
+  const second = store.create('another note', '30 minutes')
   assert.notEqual(first.code, second.code)
   for (let i = 0; i < 2; i++)
     assert.equal(createDemoStore(storage).retrieve(first.code).text, text)
@@ -66,17 +67,23 @@ test('generates six symbols exclusively from the allowed alphabet', () => {
   for (let i = 0; i < 500; i++) assert.ok(isValidCode(makeCode()))
 })
 
-test('validates empty text, code-point length boundaries, and expiration choices', () => {
+test('validates empty text, word and byte boundaries, and expiration choices', () => {
   const store = createDemoStore(memoryStorage())
-  assert.equal(countCharacters('🌉日本'), 3)
-  for (const text of ['', ' \n ', 'x'.repeat(10001), '🌉'.repeat(10001)])
+  assert.equal(countWords('🌉 日本\nမြန်မာစာ'), 3)
+  assert.equal(countWords('  a\t b\n c  '), 3)
+  for (const text of [
+    '',
+    ' \n ',
+    'word '.repeat(100001),
+    'x'.repeat(MAX_BYTES + 1),
+  ])
     assert.throws(() => store.create(text, '10 minutes'), fails('invalid'))
   assert.equal(
-    store.create('🌉'.repeat(10000), '10 minutes').text,
-    '🌉'.repeat(10000),
+    store.create('🌉 '.repeat(100000), '10 minutes').text,
+    '🌉 '.repeat(100000),
   )
   assert.throws(
-    () => store.create('note', '24 hours' as Duration),
+    () => store.create('note', '1 hour' as Duration),
     fails('invalid'),
   )
 })
@@ -86,9 +93,9 @@ test('rejects at the exact expiry boundary and cleans up without extending the t
   const storage = memoryStorage()
   const store = createDemoStore(storage, () => time)
   const short = store.create('short', '10 minutes')
-  const long = store.create('long', '1 hour')
+  const long = store.create('long', '30 minutes')
   assert.equal(short.expiresAt, 601000)
-  assert.equal(long.expiresAt, 3601000)
+  assert.equal(long.expiresAt, 1801000)
   time = 600999
   assert.equal(store.retrieve(short.code).text, 'short')
   time++
@@ -109,7 +116,7 @@ test('retries active-code collisions and may reuse an expired code', () => {
     () => codes.shift()!,
   )
   store.create('first', '10 minutes')
-  assert.equal(store.create('second', '1 hour').code, 'DEF567')
+  assert.equal(store.create('second', '30 minutes').code, 'DEF567')
   assert.equal(store.retrieve('ABC234').text, 'first')
   time += 600000
   assert.equal(store.create('new', '10 minutes').code, 'ABC234')

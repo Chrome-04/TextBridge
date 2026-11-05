@@ -1361,3 +1361,122 @@ footer {
     text-align: center;
   }
 }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface-raised);
+  white-space: nowrap;
+  font-size: 12px;
+}
+.theme-toggle span {
+  font-size: 20px;
+  line-height: 1;
+}
+.size-hint {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.field-head {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f6f9f6;
+  --surface: #ffffff;
+  --surface-raised: #edf3ed;
+  --border: #d3dfd5;
+  --border-strong: #9dab9f;
+  --text: #162c20;
+  --muted: #4d6455;
+  --faint: #526858;
+  --accent: #166534;
+  --accent-strong: #217b42;
+  --accent-ink: #ffffff;
+}
+[data-theme='light'] .card {
+  background: #fff;
+  box-shadow: 0 12px 40px rgb(21 52 30 / 5%);
+}
+[data-theme='light'] .site-header,
+[data-theme='light'] footer {
+  border-color: var(--border);
+}
+[data-theme='light'] .mode-tabs,
+[data-theme='light'] .duration-group,
+[data-theme='light'] textarea,
+[data-theme='light'] .receiver-card > input {
+  background: #f8fbf8;
+}
+[data-theme='light'] .field-head label,
+[data-theme='light'] fieldset legend,
+[data-theme='light'] .mini-label,
+[data-theme='light'] .receiver-card > label,
+[data-theme='light'] .note-card pre,
+[data-theme='light'] .code-instructions p {
+  color: var(--text);
+}
+[data-theme='light'] textarea::placeholder,
+[data-theme='light'] .receiver-card > input::placeholder {
+  color: #637568;
+}
+[data-theme='light'] .primary-button:hover:not(:disabled) {
+  background: #14532d;
+}
+[data-theme='light'] .copy-button {
+  background: #edf6ee;
+  border-color: #bfd4c4;
+}
+[data-theme='light'] .copy-button:hover {
+  background: #dfefdf;
+}
+[data-theme='light'] .demo-banner {
+  background: #edf5ec;
+  border-color: #c7dac6;
+  color: #36533d;
+}
+[data-theme='light'] .field-error,
+[data-theme='light'] .receiver-card > p.field-error,
+[data-theme='light'] .count-warning {
+  color: #9b3a0d;
+}
+[data-theme='light'] .toast {
+  background: #fff;
+}
+[data-theme='light'] .state-icon {
+  color: #5c6b60;
+}
+[data-theme='light'] .state-icon.error {
+  color: #9b3a0d;
+}
+[data-theme='light'] .prototype-badge > span {
+  background: #966020;
+}
+@media (max-width: 640px) {
+  .site-header .nav-link,
+  .site-header .nav-divider {
+    display: none;
+  }
+  .header-inner {
+    gap: 8px;
+  }
+  .theme-toggle {
+    padding-inline: 10px;
+  }
+}
+
+/* Keep long notes in a keyboard-accessible scroll area. */
+.note-card pre {
+  max-height: 60vh;
+  overflow: auto;
+}
