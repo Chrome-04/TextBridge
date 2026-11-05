@@ -1,0 +1,10 @@
+{
+  "description": "Share text and links between your phone and laptop without an account, with expiring links, QR codes, and easy copying.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
