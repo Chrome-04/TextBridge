@@ -3,8 +3,8 @@
 ## Scope
 - This is TextBridge, separate from the expense tracker. Preserve the exported
   dark green design and reuse suitable React components.
-- Current stage: Firebase Functions/Firestore/Storage tested locally. Default
-  browser mode uses same-origin API calls to emulators. Keep the local-testing
+- Current stage: Supabase Postgres/private Storage/Edge Function verified locally.
+  Default browser mode uses same-origin API calls to local Supabase. Keep the local-testing
   notice. No deployment without the user's explicit request. Never touch the
   expense tracker. Local CLI commands must explicitly use demo-textbridge.
 - Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
@@ -14,26 +14,27 @@
   Links prefill Receive; they do not bypass expiry. Keep the correct local-testing notice for the selected mode.
 - Codes are six uppercase symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
   Normalize lowercase, spaces, and hyphens; reject other invalid input.
-- Expiration: 10 minutes by default, or 30 minutes. Repeat reads until expiry.
+- Expiration: 10 minutes by default, or 5 minutes. Repeat reads until expiry.
 - Anyone knowing an active code or link can retrieve its content. Never claim end-to-end
   encryption, interpret shared text as HTML, or log text/codes.
 
 ## Setup and verification
-- The user has selected Supabase for the future public backend. Migration source
-  is in `supabase/`; see `SUPABASE_SETUP.md`. It is a preparation checkpoint only:
-  handler contract tests pass, but real SQL/Storage tests are blocked by local
-  disk space. Keep Firebase as default until real integration tests pass. Do not
-  represent the project as connected or publicly deployed. No cloud changes have
-  been made. Complete trusted hosting routing, abuse controls, cleanup, and product
-  labels before enabling live mode. Local Supabase uses its isolated launcher;
-  the demo-textbridge CLI rule applies to Firebase commands only.
+- Supabase is the default and its real SQL/Storage/Edge tests pass. See
+  `SUPABASE_SETUP.md`. The normal preview uses it; no cloud project has been
+  changed or publicly deployed. Keep live mode gated until trusted hosting routing,
+  backend secrets, abuse controls, cleanup scheduling, and production labels are
+  ready. Local Supabase uses its isolated launcher and a runtime path without spaces;
+  `demo-textbridge` is for legacy Firebase commands only.
+- Run `pnpm supabase:start` and `pnpm dev`. `pnpm test:supabase` runs real local
+  integration and desktop/mobile browser checks. Never reset normal user databases.
+  Supabase keys stay in ignored files/backend environment, never browser code.
 - Use pnpm and preserve the lockfile. Run `pnpm install --frozen-lockfile`.
 - Start `pnpm dev` explicitly; local URL is http://127.0.0.1:5173.
 - `npm run check`: type checking, demo data tests, and production build.
 - `npm run emulators`: local Functions/Firestore/Storage, with import/export.
 - `npm run test:backend`: fresh emulators and backend/browser integration tests;
   stop normal emulators first. Test resets must never target imported user data.
-- Node 24 and Java 21+; launcher uses ignored .tools Java when present.
+- Node 24 for development; legacy Firebase emulators additionally need Java 21+.
 - Install browser once with `pnpm exec playwright install chromium`, then use
   `pnpm test:e2e` for functional, responsive, and accessibility checks.
 - Use `pnpm format` (Prettier). The inherited oxfmt version produced invalid
@@ -47,16 +48,20 @@
   empty until the user fills them; do not invent personal details. Contact cards
   display values only; email opens the visitor's email app.
 - `src/CommentsSection.tsx`: public nickname/comment form and newest 20 comments.
-  Firebase-only: no simulated comment data or browser-storage fallback. Render
+  Backend-only: no simulated comment data or browser-storage fallback. Render
   comments as plain text. Keep drafts after failures and disclose public visibility.
 - `functions/comments.js`: server validation (nickname 40, comment 1,000 characters),
   server timestamps, and atomic posting/list limits. Direct database access stays
   denied. Comments persist independently of sharing expiry. No moderation UI yet.
 - `src/demo-store.ts`: validation, expiry, and demo limits.
 - `src/indexed-store.ts`: retained old demo adapter and localStorage migration.
-- `src/share-client.ts`: Firebase HTTP client; VITE_SHARE_MODE=demo selects old demo.
+- `src/share-client.ts`: Same-origin HTTP client; Supabase is default, firebase/demo are legacy modes.
 - `functions/`: server validation, code reservations, rate limits, safe downloads.
-- Firestore stores metadata; Storage stores both file and large text payloads.
+- Supabase Postgres stores private metadata; Storage holds text/file payloads.
+- `supabase/migrations/`: private schema/RPCs and 5/10-minute expiry migration.
+- `supabase/functions/api/`: shared Web API handler and Deno Edge entrypoint.
+- `scripts/supabase.mjs`: local runtime launcher and private status capture.
+- Legacy Firebase service code is retained; do not migrate or reset its data.
 - Deny direct browser database/storage access. Never generate public download URLs.
 - Support light/dark themes with a persisted choice; default to system preference.
 - Receive uses one labeled native input with six decorative code slots. Preserve
@@ -67,14 +72,14 @@
 - `tests/demo-store.test.ts`: data behavior; `tests/browser/`: user flows.
 
 ## Before live deployment (not authorized)
-- Live access is deliberately gated off. Configure and test the App Check web
-  provider, secret-managed rate salt, bucket, origin, and trusted proxy/IP identity
-  before enabling it. Backend token verification alone is not complete setup.
+- Live access is deliberately gated off. Configure and test public abuse controls,
+  backend rate salt, origin, scheduled cleanup, and trusted hosting proxy/IP identity
+  before enabling it. Legacy Firebase App Check does not protect the Supabase API.
 - Preserve atomic reservations, backend validation/rate limits, expiry checks,
   deny rules, and no-store responses. Large content stays in Storage.
 - Configure scheduled cleanup, orphan monitoring, deployment hosting rewrites,
   budgets, and upload/content abuse controls. No malware scanning exists yet.
-- Explain live Firebase setup and Blaze billing before deployment. Report every
+- Explain the chosen backend/hosting setup and current plan limits before deployment. Report every
   protection still unconfigured. Test on the chosen production runtime.
 
 ## Git and secrets

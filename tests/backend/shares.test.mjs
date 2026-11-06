@@ -109,7 +109,7 @@ test('100,000 words beyond Firestore document size and a file just below 20 MB r
   assert.equal(received.status, 200)
   assert.deepEqual(Buffer.from(await received.arrayBuffer()), text)
   const file = Buffer.alloc(19_999_999, 23)
-  const upload = await create(file, 'file', '30 minutes', '日本語.pdf')
+  const upload = await create(file, 'file', '5 minutes', '日本語.pdf')
   assert.equal(upload.status, 201)
   const note = await upload.json()
   assert.equal(note.file.name, '日本語.pdf')
@@ -151,7 +151,7 @@ test('atomic reservations retry collisions and never overwrite an active share',
   const second = await retry.create({
     ...options,
     body: Buffer.from('second'),
-    duration: '30 minutes',
+    duration: '5 minutes',
   })
   assert.equal(second.code, 'DEF567')
   await assert.rejects(initial.create(options), (e) => e.status === 503)

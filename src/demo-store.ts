@@ -1,11 +1,11 @@
 // Browser-only adapter. Replace this boundary with Firebase functions in Stage 2.
-export type Duration = '10 minutes' | '30 minutes'
+export type Duration = '5 minutes' | '10 minutes'
 export type SharedNote = {
   code: string
   text: string
   file?: { name: string; size: number; type: string }
   blob?: Blob
-  duration: Duration | '1 hour'
+  duration: Duration | '30 minutes' | '1 hour'
   expiresAt: number
 }
 export type Failure =
@@ -45,7 +45,7 @@ export const normalizeCode = (code: string) =>
   code.toUpperCase().replace(/[\s-]/g, '')
 export const isValidCode = (code: string) => /^[A-HJ-NP-Z2-9]{6}$/.test(code)
 export const durationMs = (duration: Duration) =>
-  duration === '10 minutes' ? 600_000 : 1_800_000
+  duration === '5 minutes' ? 300_000 : 600_000
 
 export function makeCode() {
   // 32 symbols divide 256 evenly, so each symbol is equally likely.
@@ -72,7 +72,9 @@ function isNote(value: unknown): value is SharedNote {
       : !!note.text.trim() &&
         countWords(note.text) <= MAX_WORDS &&
         textBytes(note.text) <= MAX_BYTES) &&
-    ['10 minutes', '30 minutes', '1 hour'].includes(note.duration) &&
+    ['5 minutes', '10 minutes', '30 minutes', '1 hour'].includes(
+      note.duration,
+    ) &&
     Number.isFinite(note.expiresAt)
   )
 }
@@ -148,7 +150,7 @@ export function createDemoStore(
           !text.trim() ||
           countWords(text) > MAX_WORDS ||
           textBytes(text) > MAX_BYTES ||
-          !['10 minutes', '30 minutes'].includes(duration)
+          !['5 minutes', '10 minutes'].includes(duration)
         )
           throw new ShareError('invalid')
         limit('create')
@@ -174,7 +176,7 @@ export function createDemoStore(
           !blobs ||
           !fileIsAllowed(file) ||
           typeof file.name !== 'string' ||
-          !['10 minutes', '30 minutes'].includes(duration)
+          !['5 minutes', '10 minutes'].includes(duration)
         )
           throw new ShareError('invalid')
         limit('create')

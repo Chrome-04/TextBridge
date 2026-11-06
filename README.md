@@ -1,191 +1,127 @@
 # TextBridge
 
-React, TypeScript, and Vite, preserving the original Figma Make design. Sharing
-now uses **local Firebase Functions, Firestore, and Storage emulators**. No live
-Firebase services, billing, hosting, or deployment are configured by this code.
-The public comments section also uses local Firestore through the backend.
-
-Supabase migration files are being prepared separately. See
-[SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for the verification status and remaining
-steps. Supabase is not connected or deployed; Firebase remains the working default.
+TextBridge shares text or one file using a six-character code, link, or QR code.
+The default backend is **local Supabase Postgres, private Storage, and an Edge
+Function**. The app runs at http://127.0.0.1:5173. The cloud project and public
+website are not deployed yet; see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
 
 ## Start in VS Code
 
-Open this folder, `TextBridge Sharing Prototype`. Use Node 24 (the Functions runtime), pnpm 11.25.0, and Java 21+. `.mise.toml` pins the frontend tools.
+Use Node 24 and pnpm 11.25.0. From this project folder:
 
 ```sh
 pnpm install --frozen-lockfile
 ```
 
-In one terminal:
+Keep two terminals running:
 
 ```sh
-npm run emulators
+pnpm supabase:start
 ```
-
-In another terminal:
 
 ```sh
-npm run dev
+pnpm dev
 ```
 
-Both `npm run ...` and `pnpm ...` can run these scripts. Keep pnpm for dependency
-installation so there is one lockfile. The emulator launcher uses a project-local
-Temurin runtime from ignored `.tools/` when available, otherwise your system Java.
-Install Java 21+ on other machines; do not copy runtime binaries into Git.
+Open http://127.0.0.1:5173 in Chrome and Safari. Create a new code in one and
+receive it in the other. Local database Studio is http://127.0.0.1:54323.
+No cloud key, account, or billing details are needed for local testing.
 
-Open [TextBridge](http://127.0.0.1:5173) in Chrome and Safari on this computer.
-Create a new code in one browser and receive it in the other. The
-[Emulator UI](http://127.0.0.1:4000) shows local data. Keep both terminals running.
-Stopping emulators with Ctrl+C exports local records/files to ignored
-`emulator-data/`; the next normal start imports them. Expiry still applies.
+The launcher uses an ignored sibling `.textbridge-supabase` runtime directory to
+avoid a native Postgres bug with spaces in paths. An ignored `.supabase-local`
+symlink points there. Local function secrets are generated in ignored
+`supabase/functions/.env`. Keep these files private. Native services were tested
+on this Apple Silicon Mac; other platforms may need a container runtime.
 
-All emulator commands explicitly use **demo-textbridge**, which has no live cloud
-resources. The ignored `.firebaserc` may contain the separate live project alias.
-No web API key or administrator credential is required for emulator testing.
-Never place administrator keys in browser configuration or commit credentials.
+Stop Supabase with `pnpm supabase:stop`. Normal stops preserve its local database
+and payloads. Do not run database resets against user data. The launcher checks
+for disk space before starting; runtime downloads and data need additional room.
 
-The app defaults to Firebase mode. `VITE_SHARE_MODE=demo` in ignored `.env.local`
-restores the previous browser-only prototype. Old IndexedDB demo codes are kept
-but are not copied to Firebase. No automatic fallback to browser storage occurs
-when the backend is unavailable: an error is shown and the draft is retained.
+## Sharing and comments
 
-## What works locally
+- Text: up to 100,000 whitespace-separated words and 20 MiB UTF-8.
+- Files: one file strictly under 20,000,000 bytes; download only.
+- New codes last **5 or 10 minutes**, with **10 minutes selected by default**.
+- Existing codes keep their original expiration. Reads do not extend their time.
+- Code, sharing link, local QR rendering, live countdown, copy, paste, and clear.
+- Comments request only a nickname (40 characters) and comment (1,000 characters).
+  The newest 20 appear publicly within this local app. Use Refresh comments to
+  see posts from another browser. Comments have no sharing expiry timer.
+- Both text and comments render as plain text. Nicknames are unverified. There
+  is no moderation interface, account history, end-to-end encryption, or scanning
+  of uploaded files.
 
-- Text: 100,000 whitespace-separated words, at most 20 MiB UTF-8; no truncation.
-- Files: one file strictly below 20,000,000 bytes per code; download only.
-- Six symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`; secure backend generation.
-- 10-minute default or 30-minute expiry, with repeat reads until expiration.
-- Code, `/receive#CODE` link, and QR. The fragment avoids including the code in
-  the initial page request. Create/retrieve operations use POST bodies, not URLs.
-- Light/dark modes, mobile layouts, How it works, and keyboard-accessible FAQ.
-- Comments: nickname (up to 40 characters) and plain-text feedback (up to 1,000).
-  The newest 20 are displayed; use Refresh comments to see posts from another
-  browser. No account, email, or phone number is requested. Comments remain in
-  the local database across normal emulator restarts and do not share the text/file
-  expiry timer. They are not copied into browser storage or simulated in demo mode.
+Anyone with an active code/link can retrieve its content until expiry. Copies
+and downloaded files cannot be revoked. This is a local test; use sample content.
+Old Firebase/demo records are preserved separately and are not automatically
+copied to Supabase. No browser-storage fallback hides backend failures.
 
-This local address does not work on a phone: `127.0.0.1` points to the device
-opening it. A reachable deployment is a later step, requiring explicit approval.
-Anyone with an active code/link can access the content. There is no end-to-end
-encryption. This is local testing, so use sample data. Already copied text or
-downloaded files cannot be revoked; the app does not scan files for malware.
+## Contact details
 
-## Edit your contact details
-
-Open `src/contact-details.ts` in VS Code and fill in `name`, `zaloWhatsApp`,
-`email`, and `viber` between the quotes. Save the file to update the local preview.
-Empty details display “Not added yet”; email becomes a clickable email link.
-These details appear publicly on the website. No contact messages are collected
-by this section. Changes to an already deployed website need a new build/deploy.
-
-## Try another device on the same Wi-Fi
-
-Keep normal Firebase emulators running. Stop only the existing Vite server with
-Ctrl+C, then start it with:
-
-```sh
-npm run dev -- --host 0.0.0.0
-```
-
-Use the **Network** address printed by Vite (such as `http://192.168.x.x:5173`)
-in both computer and phone browsers. Generate a new code/link from this address,
-then receive it on the phone. Both devices must be on the same trusted local
-network; guest Wi-Fi or a firewall may prevent access. The Vite proxy forwards
-requests to the loopback Firebase emulators; do not expose emulator ports or
-forward your router's ports. Local HTTP network addresses may not support browser
-clipboard buttons: type the code or use the device's normal copy/paste controls.
-Stop this server when done, and use `npm run dev` to return to computer-only mode.
-
-For sharing across different networks, complete the live setup below and deploy
-the frontend plus backend to the separate TextBridge project. Deploying Hosting
-alone does not turn local emulator data into a public sharing service.
+Edit `src/contact-details.ts` in VS Code: `name`, `zaloWhatsApp`, `email`, and
+`viber`. Blank values show “Not added yet”; email becomes a mail link. These are
+public contact cards, not a contact-message collection form.
 
 ## Architecture
 
-- `src/share-client.ts`: same-origin HTTP adapter, request timeout, no-store fetch.
-- `src/App.tsx`: existing Send/Receive screens and local expiry display.
-- `functions/index.js`: bounded HTTP endpoints, safe errors, no-store headers,
-  deployment gates, App Check verification hook, and function resource limits.
-- `functions/service.js`: backend validation, random codes, atomic Firestore
-  reservations, pending-to-ready uploads, timestamps, rate limits, and expiry.
-- `src/CommentsSection.tsx` and `functions/comments.js`: comment form/feed and
-  bounded backend create/list APIs, server timestamps, safe plain-text display.
-- Firestore holds metadata; Cloud Storage holds both text and file bytes. Large
-  notes never have to fit inside a Firestore document. An upload becomes readable
-  only after its blob is saved. Expiry is checked before and after blob retrieval.
-- Direct browser Firestore/Storage reads and writes are denied by rules. Only the
-  Admin SDK inside backend functions accesses them; no permanent download tokens.
-- `vite.config.ts`: loopback-only development proxy to local Functions. The built
-  app needs a separately reviewed hosting rewrite; it is not ready to deploy.
-- `src/demo-store.ts` / `src/indexed-store.ts`: retained older demo and migration.
+`src/share-client.ts` calls same-origin `/api` endpoints. Vite forwards local
+requests to the Supabase Edge Function. `supabase/functions/api/handler.ts`
+validates requests, applies limits, reserves codes, and reads private payloads.
+`supabase/migrations/` contains the database schema and expiry update.
 
-Server counters are atomic fixed one-minute windows: 5 creates and 20 lookups per
-client address, plus global limits. Upload/download byte budgets are 100 MiB per
-client and 400 MiB globally per window; global request limits are 100 creates and
-400 lookups/downloads. File viewing and downloading are separate retrievals.
-Window boundaries can permit bursts. In emulators, browsers share the loopback
-address limit; spoofed forwarded headers do not change it. Counters store hashed
-addresses, not raw IPs. Application code does not log shared content or codes.
-Comments have separate atomic counters: 3 posts per client and 30 globally per
-minute, plus 30 list requests per client and 500 globally. Invalid comment fields
-count toward posting limits. Refresh is manual, so there is no polling loop.
-Nicknames are unverified and comments become visible immediately. There is no
-moderation, reporting, author deletion, or automated spam filtering yet; local
-records can be removed using the Emulator UI. Review moderation before public
-launch. Comment bodies and nicknames are not logged by application code.
+Postgres provides atomic code reservations, fixed-window rate counters, server
+creation times, and expiry checks before and after downloads. Private Storage
+holds both large text and file bytes; objects become readable only after upload.
+Browser roles cannot access the private schema or execute backend RPCs. Secret
+keys stay in the backend. Application code does not log shared content or codes.
+
+Each one-minute window allows 5 creates/uploads and 20 lookups/downloads per
+client, with global request limits of 100 and 400 respectively. Upload/download
+byte limits are 100 MiB per client and 400 MiB globally per action/window. Comments
+allow 3 posts per client and 30 globally; listing allows 30 per client and 500
+globally. Local browsers share the local client limit. Live identity requires a
+trusted proxy, which is not configured yet.
+
+Expiry prevents reads immediately; physical deletion is separate:
+
+```sh
+pnpm supabase:cleanup
+```
+
+This removes expired/orphaned payloads before deleting their metadata, in batches
+of up to 100 payloads. Repeat if needed. Scheduled cloud cleanup is not configured.
 
 ## Checks
 
 ```sh
-npm run check             # TypeScript, demo data tests, production build
-npm run test:e2e          # Older demo regressions on isolated port 5174
-npm run test:backend      # Fresh emulators, backend tests, cross-session UI test
-npm run cleanup:local     # While normal local emulators are running
-npm run format
+pnpm check              # TypeScript, 24 unit/contract tests, production build
+pnpm test:supabase      # Real local database/Storage/Edge API + two browser flows
+pnpm format
 ```
 
-Stop normal emulators before `test:backend`: it requires their ports and starts
-fresh, non-imported test instances. Its test-only database resets are guarded by
-an environment flag. Browser tests use synthetic content. Tests cover exact
-Unicode and file bytes, large payloads, input validation, collisions, concurrent
-rate counters, expiry, direct-access denial, no-store responses, and independent
-browser sessions. Traces/screenshots/logs/emulator data are ignored by Git.
-Comment tests cover validation, server timestamps, newest-first limits, concurrent
-rate limits, denied direct database access, cross-session persistence, plain-text
-rendering, mobile accessibility, and retaining drafts after failures.
+The real integration tests are loopback-only and remove their own database and
+Storage records without resetting user data. They cover exact Unicode, 100,000
+words, a 19,999,999-byte file, concurrent reservations/limits, role denial,
+expiry, cleanup, comments, and the actual Edge Function. Browser flows cover
+independent sessions, mobile layouts/accessibility, drafts after failures, and
+both duration choices. Browser screenshots/traces and local data are ignored.
 
-## Cleanup and remaining live setup
+## Retained legacy modes
 
-Expiry is immediate read enforcement; physical deletion is separate.
-`cleanup:local` processes expired metadata, payloads, orphan queues, and rate
-counters in bounded batches. Repeat it for larger collections. A production
-schedule, retry monitoring, and bucket lifecycle policy are **not configured**.
-Failed uploads can reserve a code until expiry; they never return that code.
+Set `VITE_SHARE_MODE=firebase` in ignored `.env.local` and run `pnpm emulators`
+for the previous Firebase emulator backend (requires Java 21+). Its launcher
+explicitly targets `demo-textbridge`; its data stays in ignored `emulator-data`.
+`VITE_SHARE_MODE=demo` selects the old browser-only prototype. Restart Vite after
+changing modes. `test:backend` is the legacy fresh-emulator test suite; stop normal
+Firebase emulators first, and never reset imported user data.
 
-Live traffic is disabled by default. Before deployment:
+## Public deployment
 
-1. Select the separate TextBridge Firebase project and region, never the expense
-   tracker. Register the web app and configure its hosting origin.
-2. Configure App Check in the web client and register its provider. Backend token
-   verification exists, but real App Check issuance/verification is untested.
-3. Bind a private rate-limit salt using Secret Manager, configure the storage
-   bucket and origin, and review the production proxy/IP trust contract. Do not
-   simply enable `TEXTBRIDGE_LIVE_ENABLED` without completing these steps.
-4. Review request/byte quotas, global budgets, malware scanning/content abuse
-   controls, monitoring, and scheduled cleanup. Budget alerts are not hard caps.
-5. Test on the selected production runtime, configure hosting rewrites, deploy
-   deny rules and functions together, and verify no expired payload is cached.
+A localhost link does not work on another device. Supabase hosting the backend
+also does not publish the Vite website. Public rollout still needs the reviewed
+cloud migrations, Edge Function deployment, trusted hosting proxy, backend
+secrets, abuse controls, cleanup schedule, and two-device tests. Live mode remains
+gated off. Follow [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for the remaining work.
 
-Live Cloud Functions and Cloud Storage require Blaze billing. Local emulator
-work does not. See [Functions setup](https://firebase.google.com/docs/functions/get-started)
-and [Storage billing requirements](https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024).
-No live deployment is authorized by this README.
-
-## Git
-
-The repository is this folder, separate from the expense tracker. Preserve the
-history and pnpm lockfile. Never commit real user content, `.env` files, private
-keys, dependencies, runtime binaries, build output, or emulator exports. The
-planned private GitHub repository is `text-share`; no remote is configured yet.
-Use normal browser sign-in when connecting GitHub, never tokens in chat.
+This project is separate from the expense tracker. Preserve history and the pnpm
+lockfile. Never commit keys, real user content, runtime files, or database exports.

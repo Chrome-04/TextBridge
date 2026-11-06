@@ -1,94 +1,95 @@
-# Supabase migration — preparation checkpoint
+# Supabase setup
 
-The Supabase project has been created, but TextBridge is **not connected to it**.
-The existing Firebase emulator preview remains the default. No cloud schema,
-Storage bucket, Edge Function, or website deployment has been changed.
+## Current status
 
-## The API Keys screen
+TextBridge is now connected to a **real local Supabase database, private Storage,
+and Edge Function**. The normal preview at http://127.0.0.1:5173 uses Supabase.
+The user's cloud project has not been modified or deployed, and the site is not
+public yet. Firebase emulator data remains separate and has not been reset.
 
-No key needs to be copied for this preparation step. Publishable keys are meant
-for browser clients with appropriate access policies. Secret keys belong only
-in the backend. Never paste a secret key into chat, browser code, a `VITE_`
-variable, or Git.
+Verified: 24 unit/contract tests, 8 real database/Storage/Edge Function tests,
+2 desktop/mobile browser flows, TypeScript, and the production build. A real
+19,999,999-byte file round-trips through the Edge Function. Private table and RPC
+permissions, concurrent reservations/rates, expiry, and cleanup are checked.
+New sharing durations are 5 or 10 minutes; 10 minutes is the default. Previously
+created codes keep their original expiry.
 
-The prepared adapter uses the existing same-origin `/api` interface, so the
-browser does not receive administrator credentials or call the database directly.
-Edge Functions obtain their backend key from Supabase's injected environment.
-No Supabase browser SDK or Next.js tutorial files are needed for this Vite app.
-
-## Files prepared
-
-- `supabase/migrations/202611060001_textbridge.sql`: private metadata, comments,
-  atomic code reservations, database-time expiry, atomic rate counters, a private
-  payload bucket, and cleanup RPCs. Browser roles cannot execute these RPCs.
-- `supabase/functions/api/handler.ts`: text/files, receive, comments, limits,
-  and protected cleanup using the current frontend HTTP contract.
-- `supabase/functions/api/index.ts`: Edge Function environment wiring.
-- `scripts/supabase.mjs`: isolated local start/stop/status launcher.
-- `tests/supabase-handler.test.ts`: fake-upstream request/response contract tests.
-
-## Verification status
-
-The HTTP handler contract tests and the existing frontend checks pass. These
-tests use a fake database/storage upstream; they do **not** validate SQL execution,
-real Supabase authorization, or actual file persistence.
-
-The local native Supabase runtime could not finish unpacking because the disk
-ran out of space (`ENOSPC`). The launcher now checks for at least 4 GiB available
-before retrying. This threshold is a preflight minimum, not a guarantee that every
-runtime version fits. No existing application data was reset or migrated.
-
-Do not run the migration in the cloud or switch the normal preview yet. First
-finish the real database/storage integration tests, including concurrent
-reservations, role permissions, expiry, rate limits, and cleanup.
-
-## Resume local testing after freeing disk space
-
-From this project folder:
+## Local use
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm supabase:start
 ```
 
-This uses an isolated ignored `.supabase-local` directory and generates local
-secrets in ignored `supabase/.env.local`. Keep that terminal running. Native
-services are experimental on supported Linux/Apple Silicon machines; other
-machines need a compatible container runtime. The launcher has not completed
-an end-to-end start on this machine yet.
-
-To test the prepared adapter separately from the normal Firebase preview:
+In another terminal:
 
 ```sh
-VITE_SHARE_MODE=supabase pnpm dev --port 5176
+pnpm dev
 ```
 
-Only use this after the local stack is healthy. Open
-`http://127.0.0.1:5176`; keep the normal preview on port 5173. Product copy still
-describes Firebase until the migration is complete, so this is a developer-only
-test mode. Stop local Supabase with `pnpm supabase:stop`. The status command saves
-local endpoints/credentials in an ignored file rather than displaying keys.
+Keep both running. Studio is http://127.0.0.1:54323. Stop with
+`pnpm supabase:stop`; normal stops preserve local data. `pnpm supabase:cleanup`
+physically removes expired payloads; read access already stops at their expiry.
 
-## Later public rollout
+The runtime lives in the sibling `.textbridge-supabase` directory, with an ignored
+`.supabase-local` symlink in this project. The space-free runtime path fixes a
+native Postgres startup issue with the project folder's name. The generated
+`supabase/functions/.env` uses Supabase's standard environment file location so
+automatic function reloads keep the local settings. None of these private files
+belongs in Git. `pnpm supabase:status` saves local credentials privately without
+printing them. Native services are experimental; this setup was tested on this
+Apple Silicon Mac.
 
-Public deployment is a separate stage. It still needs:
+Run `pnpm test:supabase` with the local stack running. The tests use loopback
+connections only, never the cloud project, and do not reset user databases.
 
-1. Successful real database, Storage, and Edge Function tests.
-2. Deployment of the reviewed schema and function to the user's project.
-3. A trusted same-origin hosting proxy that supplies client identity and holds
-   its proxy secret outside browser code. The proxy is not implemented yet.
-4. Live origin, private rate salt, proxy secret, and scheduled cleanup configured
-   in backend secrets. Do not set `TEXTBRIDGE_MODE=local` for a hosted project.
-5. Public upload/comment abuse controls and a tested cleanup schedule. No malware
-   scanner or comment moderation interface is implemented.
-6. Updated frontend labels, deployment routing, and two-device verification.
+## API Keys screen
 
-Live access is disabled by default. The Edge Function rejects hosted URLs in
-local mode and requires an explicitly enabled, authenticated proxy in live mode.
-Do not enable it just to work around a setup error.
+No cloud key needs to be copied into the frontend for this architecture. It uses
+same-origin backend requests. Publishable keys are for browser clients with
+appropriate policies. Secret keys bypass those policies and must remain in the
+backend: never paste them into chat, a `VITE_` variable, browser code, or Git.
+Edge Functions obtain their backend keys from Supabase's injected environment.
+The Vite app does not need Next.js setup files or a browser Supabase SDK.
 
-Firebase emulator records are not automatically copied to Supabase. Supabase
-provides the backend; the frontend still needs a public website host.
+## Database files, ready for the later cloud step
+
+These migrations have been applied and tested locally. Apply both, in order,
+when the cloud deployment stage is authorized and its target project is verified:
+
+1. `supabase/migrations/202611060001_textbridge.sql` creates private metadata,
+   comments, atomic reservations/rate counters, private payload Storage, and
+   cleanup RPCs. Direct browser access is denied.
+2. `supabase/migrations/202611070002_shorter_expiry.sql` changes new reservations
+   to 5 or 10 minutes while retaining old records' expiry times.
+
+The Edge Function source is `supabase/functions/api/index.ts` and `handler.ts`.
+The cloud schema should be deployed through these migrations rather than manual
+public tables or permissive storage policies. Do not put shared text directly in
+public tables or make the bucket public.
+
+## Remaining public rollout
+
+The backend code deliberately rejects hosted URLs in local mode. Before enabling
+live traffic, finish the following separate deployment stage:
+
+1. Sign into the user's Supabase account through normal browser/CLI login. Verify
+   the TextBridge project; never use the expense tracker project or credentials.
+2. Deploy both reviewed migrations and the API Edge Function to that project.
+3. Implement and deploy the frontend with a trusted same-origin hosting proxy.
+   The proxy must supply client identity and hold its secret outside browser code.
+   This proxy is not implemented yet; publishing static files alone is insufficient.
+4. Configure `TEXTBRIDGE_RATE_SALT`, `TEXTBRIDGE_PROXY_SECRET`,
+   `TEXTBRIDGE_CLEANUP_SECRET`, and `TEXTBRIDGE_ORIGIN` as backend secrets, and
+   configure the production environment separately from the local `.env`.
+5. Add public upload/comment abuse controls and scheduled cleanup with monitoring.
+   There is no malware scanner, moderation UI, or automated spam filter yet.
+6. Set the live-mode flag only after the proxy and protections are tested. Update
+   local-testing labels for the production build and test sharing on two devices.
+
+No public deployment or payment-account changes have been performed. No
+administrator keys are needed in chat. Local success does not claim that cloud
+production setup or public hosting is already finished.
 
 References: [API keys](https://supabase.com/docs/guides/getting-started/api-keys),
 [Edge Function environment](https://supabase.com/docs/guides/functions/secrets),

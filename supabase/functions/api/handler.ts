@@ -115,6 +115,7 @@ export function createHandler(settings: Settings) {
       signal: AbortSignal.timeout(60_000),
     })
     if (!response.ok) throw new ApiError(503, 'unavailable')
+    if (response.status === 204) return null as T
     return response.json()
   }
   const storage = async (path: string, init: RequestInit = {}) => {
@@ -241,7 +242,7 @@ export function createHandler(settings: Settings) {
         const duration = req.headers.get('X-Share-Duration')
         if (
           !['text', 'file'].includes(kind || '') ||
-          !['10 minutes', '30 minutes'].includes(duration || '')
+          !['5 minutes', '10 minutes'].includes(duration || '')
         )
           throw new ApiError(400, 'invalid')
         let name = ''

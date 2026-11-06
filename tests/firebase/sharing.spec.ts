@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+const baseURL = process.env.TEXTBRIDGE_BROWSER_URL || 'http://127.0.0.1:5175'
 import { readFile } from 'node:fs/promises'
 
-test('independent browser sessions share exact text and files through Firebase', async ({
+test('independent browser sessions share exact text and files through the database backend', async ({
   browser,
 }) => {
   const sender = await browser.newContext({
@@ -14,18 +15,28 @@ test('independent browser sessions share exact text and files through Firebase',
   const send = await sender.newPage()
   const receive = await receiver.newPage()
   try {
-    await send.goto('http://127.0.0.1:5175')
+    await send.goto(baseURL)
     await expect(
       send.getByText(
-        'Local test only · share between browsers on this computer while Firebase emulators are running.',
+        'Local test only · share between browsers on this computer while the local backend is running.',
         { exact: true },
       ),
     ).toBeVisible()
     const text =
       'Firebase cross-browser test 🌉\nမြန်မာစာ 日本語\n<script>plain text</script>'
+    await expect(
+      send.getByRole('radio', { name: '10 minutes', exact: true }),
+    ).toBeChecked()
+    await expect(
+      send.getByRole('radio', { name: '30 minutes', exact: true }),
+    ).toHaveCount(0)
+    await send.getByRole('radio', { name: '5 minutes', exact: true }).check()
     await send.getByLabel('Text or link').fill(text)
     await send.getByRole('button', { name: 'Generate code' }).click()
     await expect(send.getByLabel('Sharing link', { exact: true })).toBeVisible()
+    await expect(send.locator('.expiry-row')).toContainText(
+      '5 minutes from creation',
+    )
     await receive.goto(
       await send.getByLabel('Sharing link', { exact: true }).inputValue(),
     )

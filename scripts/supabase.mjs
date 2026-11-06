@@ -7,13 +7,17 @@ import {
   closeSync,
   chmodSync,
   statfsSync,
+  symlinkSync,
 } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 const root = resolve(import.meta.dirname, '..')
-const local = join(root, '.supabase-local')
+// Native Postgres cannot launch from a runtime path containing spaces.
+const local = resolve(root, '..', '.textbridge-supabase')
 mkdirSync(local, { recursive: true, mode: 0o700 })
 chmodSync(local, 0o700)
+const localAlias = join(root, '.supabase-local')
+if (!existsSync(localAlias)) symlinkSync(local, localAlias, 'dir')
 const env = {
   ...process.env,
   SUPABASE_HOME: local,
@@ -23,7 +27,7 @@ const cli = join(root, 'node_modules/.bin/supabase')
 const command = process.argv[2] || 'start'
 if (!['start', 'stop', 'status', 'serve'].includes(command))
   throw new Error('This launcher supports local commands only.')
-const secrets = join(root, 'supabase/.env.local')
+const secrets = join(root, 'supabase/functions/.env')
 if (!existsSync(secrets))
   writeFileSync(
     secrets,
@@ -34,7 +38,7 @@ if (command === 'start') {
   const disk = statfsSync(local)
   if (disk.bavail * disk.bsize < 4 * 1024 ** 3) {
     console.error(
-      'Local Supabase needs room to unpack its services. Free at least 4 GiB on this disk before retrying. The Firebase preview is unchanged.',
+      'Local Supabase needs room to unpack its services. Free at least 4 GiB on this disk before retrying. Existing backend data is unchanged.',
     )
     process.exit(1)
   }
@@ -72,16 +76,32 @@ if (command === 'start') {
   })
 } else if (command === 'serve') serve()
 else if (command === 'status') {
-  const result = spawnSync(cli, ['status', '--env'], {
-    cwd: root,
-    env,
-    encoding: 'utf8',
-  })
-  if (result.status) {
+  const result = spawnSync(
+    cli,
+    ['status', '--env', '--output-format', 'json'],
+    {
+      cwd: root,
+      env,
+      encoding: 'utf8',
+    },
+  )
+  let values = {}
+  try {
+    values = JSON.parse(result.stdout)
+  } catch {
+    /* incomplete status */
+  }
+  if (result.status || !values.DB_URL) {
     console.error('Local Supabase is not ready.')
     process.exit(1)
   }
-  writeFileSync(join(local, 'status.env'), result.stdout, { mode: 0o600 })
+  writeFileSync(
+    join(local, 'status.env'),
+    Object.entries(values)
+      .map(([name, value]) => `${name}=${JSON.stringify(value)}`)
+      .join('\n') + '\n',
+    { mode: 0o600 },
+  )
   console.log(
     'Local endpoints and credentials saved privately to .supabase-local/status.env.',
   )

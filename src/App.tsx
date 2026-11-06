@@ -1,7 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
 import CommentsSection from './CommentsSection'
-import { withShareStore, usingBackend } from './share-client'
+import { withShareStore, usingBackend, backendName } from './share-client'
 import {
   useEffect,
   useLayoutEffect,
@@ -256,7 +256,7 @@ function ModeTabs({
         className="prototype-badge"
         title={
           usingBackend
-            ? 'Local Firebase testing only. Sharing works between browsers on this computer while the app and emulators are running. Nothing is public online.'
+            ? `Local ${backendName} testing only. Sharing works between browsers on this computer while the app and local backend are running. Nothing is public online.`
             : 'Local demo only. Sharing works in this browser and is not connected to a public server.'
         }
       >
@@ -455,7 +455,7 @@ function SendView({
           <fieldset>
             <legend>Keep for</legend>
             <div className="duration-group">
-              {(['10 minutes', '30 minutes'] as Duration[]).map((option) => (
+              {(['5 minutes', '10 minutes'] as Duration[]).map((option) => (
                 <label
                   className={
                     duration === option ? 'duration active' : 'duration'
@@ -480,7 +480,7 @@ function SendView({
         </div>
         <p className="local-note">
           {usingBackend
-            ? 'Local test only · share between browsers on this computer while Firebase emulators are running.'
+            ? 'Local test only · share between browsers on this computer while the local backend is running.'
             : 'Local demo only · sharing is stored in this browser and is not public yet.'}
         </p>
       </form>
@@ -661,7 +661,7 @@ function GeneratedView({
           </p>
           <small>
             {usingBackend
-              ? 'Local Firebase: open this link in Chrome or Safari on this computer. Phone sharing needs a reachable website address; 127.0.0.1 refers to each device itself.'
+              ? 'Local test: open this link in Chrome or Safari on this computer. Phone sharing needs a reachable website address; 127.0.0.1 refers to each device itself.'
               : 'Local demo: links work in this browser only. Scanning with a phone or opening in another browser cannot retrieve this item yet. A shared backend is still required.'}
           </small>
         </div>
@@ -914,7 +914,7 @@ function ReceiveView({
         </button>
         <p className="local-note">
           {usingBackend
-            ? 'Local test only · Firebase emulators must stay running.'
+            ? 'Local test only · The local backend must stay running.'
             : 'Local demo only · codes are not shared with other browsers yet.'}
         </p>
       </form>
@@ -1043,7 +1043,7 @@ const stateContent: Record<
     tag: 'Code unavailable',
     title: 'Code not found or expired.',
     body: usingBackend
-      ? 'Check the code and expiry, or ask the sender for a new one. Codes from the old browser-only demo are not stored in Firebase.'
+      ? 'Check the code and expiry, or ask the sender for a new one. Codes from the old browser-only demo are not stored in this database.'
       : 'Check the code and try again, or ask the sender for a new one. Demo codes only work in the browser where they were created.',
   },
   invalid: {
@@ -1055,7 +1055,7 @@ const stateContent: Record<
     tag: usingBackend ? 'Connection unavailable' : 'Demo connection error',
     title: 'The bridge is down.',
     body: usingBackend
-      ? 'Could not reach the local Firebase backend. Keep the emulators running, then try again. Your input is still here.'
+      ? 'Could not reach the local backend. Keep it running, then try again. Your input is still here.'
       : 'This is a simulated network error. Your input is still here. Try again when you are ready.',
   },
   storage: {

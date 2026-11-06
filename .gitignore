@@ -46,6 +46,7 @@ exports/
 # Project-local Java runtime and downloads
 .tools/
 .supabase-local/
+.supabase-local
 supabase/.temp/
 supabase/.branches/
 supabase/.env*

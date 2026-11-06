@@ -13,8 +13,8 @@ function errorMessage(error: unknown, posting: boolean) {
   if (error instanceof ShareError && error.kind === 'invalid')
     return 'Use a nickname of 1–40 characters and a comment of 1–1,000 characters.'
   return posting
-    ? 'Could not confirm your comment was posted. Your draft is still here. Check Refresh comments before retrying, and keep Firebase emulators running.'
-    : 'Could not load comments. Keep Firebase emulators running, then try Refresh comments.'
+    ? 'Could not confirm your comment was posted. Your draft is still here. Check Refresh comments before retrying, and keep the local backend running.'
+    : 'Could not load comments. Keep the local backend running, then try Refresh comments.'
 }
 
 export default function CommentsSection() {
@@ -91,13 +91,13 @@ export default function CommentsSection() {
       </p>
       {!usingBackend ? (
         <p className="help-demo-note">
-          Comments need Firebase mode. This browser-only demo cannot post or
-          load database comments.
+          Comments need a connected backend. This browser-only demo cannot post
+          or load database comments.
         </p>
       ) : (
         <>
           <p className="local-note">
-            Local Firebase comments · visible between browsers on this computer.
+            Local database comments · visible between browsers on this computer.
             Nothing is published online yet.
           </p>
           <div className="comments-layout">

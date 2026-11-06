@@ -21,7 +21,7 @@ export function validateContent(body, kind, duration, name = '') {
   if (
     !Buffer.isBuffer(body) ||
     !['text', 'file'].includes(kind) ||
-    !['10 minutes', '30 minutes'].includes(duration)
+    !['5 minutes', '10 minutes'].includes(duration)
   )
     throw new ApiError(400, 'invalid')
   if (kind === 'file') {
@@ -116,7 +116,7 @@ export function createShareService({
         state: 'pending',
         createdAt: FieldValue.serverTimestamp(),
         expiresAt: Timestamp.fromMillis(
-          now() + (duration === '10 minutes' ? 600_000 : 1_800_000),
+          now() + (duration === '5 minutes' ? 300_000 : 600_000),
         ),
       }
       const won = await db.runTransaction(async (tx) => {

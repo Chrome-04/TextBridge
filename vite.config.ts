@@ -6,8 +6,8 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const supabase =
-    env.VITE_SHARE_MODE === 'supabase' ||
-    process.env.VITE_SHARE_MODE === 'supabase'
+    (process.env.VITE_SHARE_MODE || env.VITE_SHARE_MODE || 'supabase') ===
+    'supabase'
   return {
     plugins: [react(), tailwindcss()],
     resolve: {

@@ -58,11 +58,11 @@ test('send, copy, second note, cross-tab retrieval, reload, repeat reads, and sa
   await expect(
     page.getByRole('radio', { name: '10 minutes', exact: true }),
   ).toBeChecked()
-  await page.getByRole('radio', { name: '30 minutes', exact: true }).check()
+  await page.getByRole('radio', { name: '5 minutes', exact: true }).check()
   const second = await send(page, 'second note')
   expect(second).not.toBe(code)
   await expect(page.locator('.expiry-row')).toContainText(
-    '30 minutes from creation',
+    '5 minutes from creation',
   )
   const anotherTab = await context.newPage()
   await anotherTab.goto('/receive')

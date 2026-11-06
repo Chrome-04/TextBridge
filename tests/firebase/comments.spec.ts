@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+const baseURL = process.env.TEXTBRIDGE_BROWSER_URL || 'http://127.0.0.1:5175'
 
 test('database comments persist across independent browsers; safe text, mobile layout and failures', async ({
   browser,
@@ -13,7 +14,7 @@ test('database comments persist across independent browsers; safe text, mobile l
   try {
     const page = await sender.newPage()
     const mobile = await reader.newPage()
-    await page.goto('http://127.0.0.1:5175/#comments')
+    await page.goto(`${baseURL}/#comments`)
     await expect(
       page.getByRole('button', { name: 'Refresh comments' }),
     ).toBeEnabled()
@@ -32,11 +33,21 @@ test('database comments persist across independent browsers; safe text, mobile l
     await expect(page.getByLabel('Your comment', { exact: true })).toHaveValue(
       '',
     )
-    await mobile.goto('http://127.0.0.1:5175/#comments')
-    await expect(mobile.locator('.comment-list article')).toContainText(message)
+    await mobile.goto(`${baseURL}/#comments`)
+    await expect(
+      mobile
+        .locator('.comment-list article')
+        .filter({ hasText: 'A useful bridge!' })
+        .first(),
+    ).toContainText(message)
     await expect(mobile.locator('.comment-list img')).toHaveCount(0)
     await mobile.reload()
-    await expect(mobile.locator('.comment-list article')).toContainText(message)
+    await expect(
+      mobile
+        .locator('.comment-list article')
+        .filter({ hasText: 'A useful bridge!' })
+        .first(),
+    ).toContainText(message)
     expect(
       await mobile.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -84,7 +95,12 @@ test('database comments persist across independent browsers; safe text, mobile l
     await mobile.route('**/api/comments/list', (route) => route.abort())
     await mobile.getByRole('button', { name: 'Refresh comments' }).click()
     await expect(mobile.getByRole('alert')).toContainText('Could not load')
-    await expect(mobile.locator('.comment-list article')).toContainText(message)
+    await expect(
+      mobile
+        .locator('.comment-list article')
+        .filter({ hasText: 'A useful bridge!' })
+        .first(),
+    ).toContainText(message)
   } finally {
     await sender.close()
     await reader.close()

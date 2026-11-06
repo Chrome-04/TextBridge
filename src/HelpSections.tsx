@@ -3,7 +3,7 @@ import { contactDetails } from './contact-details'
 const steps = [
   {
     title: 'Choose what to share',
-    text: 'Paste a note, link, or code snippet, or choose a file under 20 MB. Keep it available for 10 or 30 minutes.',
+    text: 'Paste a note, link, or code snippet, or choose a file under 20 MB. Keep it available for 5 or 10 minutes.',
   },
   {
     title: 'Generate your bridge',
@@ -23,7 +23,7 @@ const questions = [
   {
     question: 'Can I share between Chrome, Safari, and my phone?',
     answer: usingBackend
-      ? 'Chrome and Safari on this computer can now retrieve the same newly generated codes through the local Firebase server. Keep the app and emulators running. Phone sharing needs a website address reachable from the phone; a 127.0.0.1 link always points to the device opening it. This website is not deployed yet.'
+      ? 'Chrome and Safari on this computer can now retrieve the same newly generated codes through the local database server. Keep the app and local backend running. Phone sharing needs a website address reachable from the phone; a 127.0.0.1 link always points to the device opening it. This website is not deployed yet.'
       : 'Not yet. This version is a local demo: content stays in the browser and profile where you created it. Try another tab at the same address in that browser. Cross-browser and cross-device sharing need the shared backend, which is not connected yet.',
   },
   {
@@ -34,18 +34,18 @@ const questions = [
   {
     question: 'Who can read my shared content?',
     answer: usingBackend
-      ? 'Anyone with an active code or link can access its content. The QR code contains the same link. TextBridge does not provide end-to-end encryption or password protection. This local test stores content in Firebase emulators on your computer. Use sample content while testing.'
+      ? 'Anyone with an active code or link can access its content. The QR code contains the same link. TextBridge does not provide end-to-end encryption or password protection. This local test stores content in the local database on your computer. Use sample content while testing.'
       : 'Anyone with an active sharing code or link can access its content. The QR code contains the same link. TextBridge does not provide end-to-end encryption or password protection. In this demo, data is stored unencrypted in your browser, so use sample content rather than sensitive information.',
   },
   {
     question: 'When does my code expire?',
     answer:
-      'Choose 10 minutes (the default) or 30 minutes when sending. You can retrieve the content repeatedly until that time; receiving it does not extend its lifetime. After expiry it becomes unavailable in TextBridge. Copies and files already downloaded remain with the recipient.',
+      'Choose 5 minutes or 10 minutes (the default) when sending. You can retrieve the content repeatedly until that time; receiving it does not extend its lifetime. After expiry it becomes unavailable in TextBridge. Copies and files already downloaded remain with the recipient.',
   },
   {
     question: 'Why does my code say “not found or expired”?',
     answer: usingBackend
-      ? 'Check the six-character code and its expiration time. Lowercase letters, spaces, and hyphens are accepted. The letters O and I and numbers 0 and 1 are never used. Old browser-only demo codes are not copied to Firebase. Codes can also become unavailable if local emulator data is cleared.'
+      ? 'Check the six-character code and its expiration time. Lowercase letters, spaces, and hyphens are accepted. The letters O and I and numbers 0 and 1 are never used. Old browser-only demo codes are not copied into this database. Codes can also become unavailable if local database data is cleared.'
       : 'Check the six-character code and its expiration time. Lowercase letters, spaces, and hyphens are accepted. The letters O and I and the numbers 0 and 1 are never used. For this local demo, also check that you are in the original browser and profile, at the same address: localhost and 127.0.0.1 have separate storage. Clearing browser data can remove your shared items.',
   },
   {
@@ -85,7 +85,7 @@ export default function HelpSections() {
             {usingBackend ? 'Testing locally?' : 'Trying the demo?'}
           </strong>{' '}
           {usingBackend
-            ? 'Open the sharing link in another browser on this computer. Both browsers use the same local Firebase backend. Phone sharing is not connected yet.'
+            ? 'Open the sharing link in another browser on this computer. Both browsers use the same local backend. Phone sharing is not connected yet.'
             : 'Open the sharing link in another tab of this browser. A phone scanning the QR code cannot retrieve your local content yet.'}
         </p>
       </section>

@@ -42,7 +42,7 @@ test('multiple notes survive new adapters and repeat retrieval, preserving exact
     'a'.repeat(2000) +
     '\n'
   const first = store.create(text, '10 minutes')
-  const second = store.create('another note', '30 minutes')
+  const second = store.create('another note', '5 minutes')
   assert.notEqual(first.code, second.code)
   for (let i = 0; i < 2; i++)
     assert.equal(createDemoStore(storage).retrieve(first.code).text, text)
@@ -56,10 +56,10 @@ test('files preserve exact bytes and metadata, repeat reads, and expire with the
   const store = createDemoStore(storage, () => time, undefined, blobs)
   const bytes = new Uint8Array([0, 255, 12, 13, 10, 200])
   const file = new File([bytes], 'မြန်မာ-日本.pdf', { type: 'application/pdf' })
-  const note = store.createFile(file, '30 minutes')
+  const note = store.createFile(file, '5 minutes')
   assert.equal(note.file?.name, file.name)
   assert.equal(note.file?.size, bytes.length)
-  assert.equal(note.expiresAt, 1801000)
+  assert.equal(note.expiresAt, 301000)
   for (let i = 0; i < 2; i++) {
     const received = createDemoStore(
       storage,
@@ -160,17 +160,21 @@ test('validates empty text, word and byte boundaries, and expiration choices', (
     () => store.create('note', '1 hour' as Duration),
     fails('invalid'),
   )
+  assert.throws(
+    () => store.create('note', '30 minutes' as Duration),
+    fails('invalid'),
+  )
 })
 
 test('rejects at the exact expiry boundary and cleans up without extending the timer', () => {
   let time = 1000
   const storage = memoryStorage()
   const store = createDemoStore(storage, () => time)
-  const short = store.create('short', '10 minutes')
-  const long = store.create('long', '30 minutes')
-  assert.equal(short.expiresAt, 601000)
-  assert.equal(long.expiresAt, 1801000)
-  time = 600999
+  const short = store.create('short', '5 minutes')
+  const long = store.create('long', '10 minutes')
+  assert.equal(short.expiresAt, 301000)
+  assert.equal(long.expiresAt, 601000)
+  time = 300999
   assert.equal(store.retrieve(short.code).text, 'short')
   time++
   assert.throws(() => store.retrieve(short.code), fails('not-found'))
@@ -190,7 +194,7 @@ test('retries active-code collisions and may reuse an expired code', () => {
     () => codes.shift()!,
   )
   store.create('first', '10 minutes')
-  assert.equal(store.create('second', '30 minutes').code, 'DEF567')
+  assert.equal(store.create('second', '5 minutes').code, 'DEF567')
   assert.equal(store.retrieve('ABC234').text, 'first')
   time += 600000
   assert.equal(store.create('new', '10 minutes').code, 'ABC234')

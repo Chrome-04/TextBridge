@@ -3,7 +3,7 @@ import { ShareError, type SharedNote, type Duration } from './demo-store'
 
 export const usingBackend = import.meta.env.VITE_SHARE_MODE !== 'demo'
 export const backendName =
-  import.meta.env.VITE_SHARE_MODE === 'supabase' ? 'Supabase' : 'Firebase'
+  import.meta.env.VITE_SHARE_MODE === 'firebase' ? 'Firebase' : 'Supabase'
 type Store = {
   create(text: string, duration: Duration): SharedNote | Promise<SharedNote>
   createFile(file: File, duration: Duration): SharedNote | Promise<SharedNote>
