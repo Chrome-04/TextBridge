@@ -67,6 +67,36 @@ Anyone with an active code/link can access the content. There is no end-to-end
 encryption. This is local testing, so use sample data. Already copied text or
 downloaded files cannot be revoked; the app does not scan files for malware.
 
+## Edit your contact details
+
+Open `src/contact-details.ts` in VS Code and fill in `name`, `zaloWhatsApp`,
+`email`, and `viber` between the quotes. Save the file to update the local preview.
+Empty details display “Not added yet”; email becomes a clickable email link.
+These details appear publicly on the website. No contact messages are collected
+by this section. Changes to an already deployed website need a new build/deploy.
+
+## Try another device on the same Wi-Fi
+
+Keep normal Firebase emulators running. Stop only the existing Vite server with
+Ctrl+C, then start it with:
+
+```sh
+npm run dev -- --host 0.0.0.0
+```
+
+Use the **Network** address printed by Vite (such as `http://192.168.x.x:5173`)
+in both computer and phone browsers. Generate a new code/link from this address,
+then receive it on the phone. Both devices must be on the same trusted local
+network; guest Wi-Fi or a firewall may prevent access. The Vite proxy forwards
+requests to the loopback Firebase emulators; do not expose emulator ports or
+forward your router's ports. Local HTTP network addresses may not support browser
+clipboard buttons: type the code or use the device's normal copy/paste controls.
+Stop this server when done, and use `npm run dev` to return to computer-only mode.
+
+For sharing across different networks, complete the live setup below and deploy
+the frontend plus backend to the separate TextBridge project. Deploying Hosting
+alone does not turn local emulator data into a public sharing service.
+
 ## Architecture
 
 - `src/share-client.ts`: same-origin HTTP adapter, request timeout, no-store fetch.

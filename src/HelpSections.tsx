@@ -1,4 +1,5 @@
 import { usingBackend } from './share-client'
+import { contactDetails } from './contact-details'
 const steps = [
   {
     title: 'Choose what to share',
@@ -121,16 +122,28 @@ export default function HelpSections() {
         <p className="eyebrow">Contact</p>
         <h2 id="contact-title">Get in touch</h2>
         <p className="help-intro">
-          Have a question or found an issue? The public TextBridge support
-          contact has not been set up yet.
+          Questions, suggestions, or something not working? Reach out using the
+          contact details below.
         </p>
-        <div className="contact-panel">
-          <strong>For now, check the FAQ above.</strong>
-          <p>
-            This preview does not collect or send contact messages. A support
-            address can be added before TextBridge is shared publicly.
-          </p>
-        </div>
+        <dl className="contact-grid">
+          {[
+            { label: 'Name', value: contactDetails.name },
+            { label: 'Zalo / WhatsApp', value: contactDetails.zaloWhatsApp },
+            { label: 'Email', value: contactDetails.email },
+            { label: 'Viber', value: contactDetails.viber },
+          ].map(({ label, value }) => (
+            <div className="contact-card" key={label}>
+              <dt>{label}</dt>
+              <dd className={value.trim() ? '' : 'contact-placeholder'}>
+                {label === 'Email' && value.trim() ? (
+                  <a href={`mailto:${value.trim()}`}>{value}</a>
+                ) : (
+                  value.trim() || 'Not added yet'
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </section>
     </div>
   )

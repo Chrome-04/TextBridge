@@ -35,6 +35,9 @@
 ## Architecture
 - `src/App.tsx`: UI, demo simulation, and `/` / `/receive` history routing.
 - `src/HelpSections.tsx`: how-it-works guide and keyboard-accessible FAQ.
+- `src/contact-details.ts`: owner-editable public contact details. Keep placeholders
+  empty until the user fills them; do not invent personal details. Contact cards
+  display values only; email opens the visitor's email app.
 - `src/CommentsSection.tsx`: public nickname/comment form and newest 20 comments.
   Firebase-only: no simulated comment data or browser-storage fallback. Render
   comments as plain text. Keep drafts after failures and disclose public visibility.
