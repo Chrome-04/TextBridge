@@ -101,6 +101,7 @@ function Brand({ onClick }: { onClick: () => void }) {
 function Header({
   onSend,
   onReceive,
+  activeMode,
   theme,
   onTheme,
 }: {
@@ -108,6 +109,7 @@ function Header({
   onTheme: () => void
   onSend: () => void
   onReceive: () => void
+  activeMode: Mode
 }) {
   return (
     <header className="site-header">
@@ -115,11 +117,23 @@ function Header({
         <Brand onClick={onSend} />
         <nav aria-label="Primary navigation">
           <button className="nav-link" onClick={onSend}>
-            Send text
+            Share now
           </button>
-          <span className="nav-divider" />
-          <button className="nav-link" onClick={onReceive}>
-            Receive text
+          <a className="nav-link" href="#how-it-works">
+            How it works
+          </a>
+          <a className="nav-link" href="#faq">
+            FAQ
+          </a>
+          <a className="nav-link" href="#contact">
+            Contact
+          </a>
+          <button
+            className="header-mode-link"
+            onClick={onReceive}
+            aria-current={activeMode === 'receive' ? 'page' : undefined}
+          >
+            Receive
           </button>
           <button
             className="theme-toggle"
@@ -130,6 +144,16 @@ function Header({
             {theme === 'dark' ? 'Light' : 'Dark'} mode
           </button>
         </nav>
+        <details className="mobile-menu">
+          <summary aria-label="Open navigation">Menu</summary>
+          <div className="mobile-menu-links">
+            <button onClick={onSend}>Share now</button>
+            <button onClick={onReceive}>Receive</button>
+            <a href="#how-it-works">How it works</a>
+            <a href="#faq">FAQ</a>
+            <a href="#contact">Contact</a>
+          </div>
+        </details>
       </div>
     </header>
   )
@@ -139,17 +163,19 @@ function ModeTabs({
   mode,
   onSend,
   onReceive,
+  compact = false,
 }: {
   mode: 'send' | 'receive'
   onSend: () => void
   onReceive: () => void
+  compact?: boolean
 }) {
   return (
-    <div className="mode-row">
+    <div className={compact ? 'mode-row mode-row-compact' : 'mode-row'}>
       <div
         className="mode-tabs"
-        role="tablist"
-        aria-label="TextBridge mode"
+        role="group"
+        aria-label="Sharing mode"
         onKeyDown={(event) => {
           if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
             event.preventDefault()
@@ -169,12 +195,11 @@ function ModeTabs({
       >
         <button
           id="tab-send"
+          type="button"
           aria-controls="tool-panel"
-          tabIndex={mode === 'send' ? 0 : -1}
-          aria-selected={mode === 'send'}
+          aria-pressed={mode === 'send'}
           className={mode === 'send' ? 'mode-tab active' : 'mode-tab'}
           onClick={onSend}
-          role="tab"
         >
           <Icon size={17}>
             <path
@@ -189,12 +214,11 @@ function ModeTabs({
         </button>
         <button
           id="tab-receive"
+          type="button"
           aria-controls="tool-panel"
-          tabIndex={mode === 'receive' ? 0 : -1}
-          aria-selected={mode === 'receive'}
+          aria-pressed={mode === 'receive'}
           className={mode === 'receive' ? 'mode-tab active' : 'mode-tab'}
           onClick={onReceive}
-          role="tab"
         >
           <Icon size={17}>
             <path
@@ -208,11 +232,15 @@ function ModeTabs({
           Receive
         </button>
       </div>
-      <span className="prototype-badge">
-        <span />{' '}
-        {usingBackend
-          ? 'Firebase · local testing'
-          : 'Local demo · this browser only'}
+      <span
+        className="prototype-badge"
+        title={
+          usingBackend
+            ? 'Local Firebase testing only. Sharing works between browsers on this computer while the app and emulators are running. Nothing is public online.'
+            : 'Local demo only. Sharing works in this browser and is not connected to a public server.'
+        }
+      >
+        <span /> {usingBackend ? 'Local test' : 'Demo'}
       </span>
     </div>
   )
@@ -246,6 +274,9 @@ function SendView({
   setContentKind,
   file,
   setFile,
+  mode,
+  onSend,
+  onReceive,
 }: {
   text: string
   setText: (text: string) => void
@@ -256,6 +287,9 @@ function SendView({
   setContentKind: (kind: 'text' | 'file') => void
   file: File | null
   setFile: (file: File | null) => void
+  mode: Mode
+  onSend: () => void
+  onReceive: () => void
 }) {
   const { count, bytes } = useMemo(
     () => ({ count: countWords(text), bytes: textBytes(text) }),
@@ -279,27 +313,30 @@ function SendView({
           if (valid) onGenerate()
         }}
       >
-        <fieldset className="content-choice">
-          <legend>What would you like to share?</legend>
-          <div className="duration-group">
-            {(['text', 'file'] as const).map((kind) => (
-              <label
-                className={
-                  contentKind === kind ? 'duration active' : 'duration'
-                }
-                key={kind}
-              >
-                <input
-                  type="radio"
-                  name="content-kind"
-                  checked={contentKind === kind}
-                  onChange={() => setContentKind(kind)}
-                />
-                {kind === 'text' ? 'Text' : 'File'}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <div className="composer-toolbar">
+          <ModeTabs mode={mode} onSend={onSend} onReceive={onReceive} compact />
+          <fieldset className="content-choice">
+            <legend className="sr-only">What would you like to share?</legend>
+            <div className="kind-switch">
+              {(['text', 'file'] as const).map((kind) => (
+                <label
+                  className={
+                    contentKind === kind ? 'duration active' : 'duration'
+                  }
+                  key={kind}
+                >
+                  <input
+                    type="radio"
+                    name="content-kind"
+                    checked={contentKind === kind}
+                    onChange={() => setContentKind(kind)}
+                  />
+                  {kind === 'text' ? 'Text' : 'File'}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
         {contentKind === 'text' ? (
           <>
             <div className="field-head">
@@ -410,6 +447,11 @@ function SendView({
             Generate code <ArrowIcon />
           </button>
         </div>
+        <p className="local-note">
+          {usingBackend
+            ? 'Local test only · share between browsers on this computer while Firebase emulators are running.'
+            : 'Local demo only · sharing is stored in this browser and is not public yet.'}
+        </p>
       </form>
     </>
   )
@@ -582,10 +624,16 @@ function ReceiveView({
   code,
   setCode,
   onSubmit,
+  mode,
+  onSend,
+  onReceive,
 }: {
   code: string
   setCode: (code: string) => void
   onSubmit: () => void
+  mode: Mode
+  onSend: () => void
+  onReceive: () => void
 }) {
   const [submitted, setSubmitted] = useState(false)
   const [selection, setSelection] = useState({ start: 0, end: 0 })
@@ -616,6 +664,9 @@ function ReceiveView({
           if (isValidCode(code)) onSubmit()
         }}
       >
+        <div className="receiver-toolbar">
+          <ModeTabs mode={mode} onSend={onSend} onReceive={onReceive} compact />
+        </div>
         <label htmlFor="sharing-code">Enter sharing code</label>
         <p id="code-hint">
           Spaces and hyphens are ignored. Lowercase works too.
@@ -702,6 +753,11 @@ function ReceiveView({
         <button className="primary-button receiver-submit" type="submit">
           View content <ArrowIcon />
         </button>
+        <p className="local-note">
+          {usingBackend
+            ? 'Local test only · Firebase emulators must stay running.'
+            : 'Local demo only · codes are not shared with other browsers yet.'}
+        </p>
       </form>
     </>
   )
@@ -1058,6 +1114,7 @@ export default function App() {
       </a>
       <Header
         theme={theme}
+        activeMode={mode}
         onTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         onReceive={() => navigate('receive')}
         onSend={() => navigate('send')}
@@ -1068,24 +1125,14 @@ export default function App() {
         ref={mainRef}
         tabIndex={-1}
       >
-        <ModeTabs
-          mode={mode}
-          onReceive={() => navigate('receive')}
-          onSend={() => navigate('send')}
-        />
-        <div className="demo-banner">
-          <span className="demo-label">{usingBackend ? 'LOCAL' : 'DEMO'}</span>
-          <p>
-            {usingBackend
-              ? 'Local Firebase mode. Keep the emulators running to share between browsers on this computer. Nothing is published online.'
-              : 'Stored only in this browser. Cross-device sharing is not connected yet.'}
-          </p>
-        </div>
-        <section
-          id="tool-panel"
-          role="tabpanel"
-          aria-labelledby={`tab-${mode}`}
-        >
+        {!['send', 'receive'].includes(view) && (
+          <ModeTabs
+            mode={mode}
+            onReceive={() => navigate('receive')}
+            onSend={() => navigate('send')}
+          />
+        )}
+        <section id="tool-panel">
           {view === 'send' && (
             <SendView
               contentKind={contentKind}
@@ -1097,6 +1144,9 @@ export default function App() {
               duration={duration}
               setDuration={setDuration}
               onGenerate={() => run('send')}
+              mode={mode}
+              onSend={() => navigate('send')}
+              onReceive={() => navigate('receive')}
             />
           )}
           {(view === 'generating' || view === 'retrieving') && (
@@ -1116,6 +1166,9 @@ export default function App() {
               code={code}
               setCode={setCode}
               onSubmit={() => run('receive')}
+              mode={mode}
+              onSend={() => navigate('send')}
+              onReceive={() => navigate('receive')}
             />
           )}
           {view === 'received' && note && (

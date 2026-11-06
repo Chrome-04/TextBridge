@@ -9,8 +9,12 @@ const steps = [
     text: 'Get a six-character code, a sharing link, and a QR code. Each one leads to the same content.',
   },
   {
-    title: 'Open and receive',
-    text: 'Enter the code in Receive, or open the link to fill it in. Select View content, then copy the text or download the file.',
+    title: 'Receive it on another device',
+    text: 'Enter the code in Receive, or open the link to fill it in. Select View content to retrieve it; scanning the QR code opens that same link.',
+  },
+  {
+    title: 'Copy or download',
+    text: 'Copy the text or download the file. You can retrieve it again until it expires; receiving does not delete it.',
   },
 ]
 
@@ -50,21 +54,9 @@ const questions = [
   },
 ]
 
-function jumpTo(id: string) {
-  const section = document.getElementById(id)
-  section?.focus({ preventScroll: true })
-  section?.scrollIntoView({ block: 'start' })
-}
-
 export default function HelpSections() {
   return (
     <div className="help-sections">
-      <nav className="help-nav" aria-label="TextBridge guide">
-        <button onClick={() => jumpTo('how-it-works')}>How it works</button>
-        <span aria-hidden="true">·</span>
-        <button onClick={() => jumpTo('faq')}>FAQ</button>
-      </nav>
-
       <section
         id="how-it-works"
         aria-labelledby="how-title"
@@ -118,6 +110,26 @@ export default function HelpSections() {
               <p>{answer}</p>
             </details>
           ))}
+        </div>
+      </section>
+      <section
+        id="contact"
+        aria-labelledby="contact-title"
+        tabIndex={-1}
+        className="help-section contact-section"
+      >
+        <p className="eyebrow">Contact</p>
+        <h2 id="contact-title">Get in touch</h2>
+        <p className="help-intro">
+          Have a question or found an issue? The public TextBridge support
+          contact has not been set up yet.
+        </p>
+        <div className="contact-panel">
+          <strong>For now, check the FAQ above.</strong>
+          <p>
+            This preview does not collect or send contact messages. A support
+            address can be added before TextBridge is shared publicly.
+          </p>
         </div>
       </section>
     </div>
