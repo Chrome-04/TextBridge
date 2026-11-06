@@ -29,7 +29,7 @@ test('copy link, decode QR, follow link, and retrieve exact text', async ({
   await expect(link).toBeVisible()
   const value = await link.inputValue()
   const code = await page.locator('.sharing-code').innerText()
-  expect(value).toBe(`http://127.0.0.1:5173/receive#${code}`)
+  expect(value).toBe(`http://127.0.0.1:5174/receive#${code}`)
   await page.getByRole('button', { name: 'Copy link' }).click()
   await expect(page.getByRole('status')).toContainText('Link copied')
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(value)

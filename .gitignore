@@ -42,3 +42,6 @@ emulator-data/
 exports/
 *.db
 *.sqlite*
+
+# Project-local Java runtime and downloads
+.tools/

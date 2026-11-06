@@ -1,6 +1,6 @@
 import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
-import { withDemoStore } from './indexed-store'
+import { withShareStore, usingBackend } from './share-client'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   countWords,
@@ -202,7 +202,10 @@ function ModeTabs({
         </button>
       </div>
       <span className="prototype-badge">
-        <span /> Local demo · this browser only
+        <span />{' '}
+        {usingBackend
+          ? 'Firebase · local testing'
+          : 'Local demo · this browser only'}
       </span>
     </div>
   )
@@ -552,9 +555,9 @@ function GeneratedView({
             Use the code, open the link, or scan the QR code to reach Receive.
           </p>
           <small>
-            Local demo: links work in this browser only. Scanning with a phone
-            or opening in another browser cannot retrieve this item yet. A
-            shared backend is still required.
+            {usingBackend
+              ? 'Local Firebase: open this link in Chrome or Safari on this computer. Phone sharing needs a reachable website address; 127.0.0.1 refers to each device itself.'
+              : 'Local demo: links work in this browser only. Scanning with a phone or opening in another browser cannot retrieve this item yet. A shared backend is still required.'}
           </small>
         </div>
         <div className="result-footer">
@@ -648,7 +651,7 @@ function FileDownload({ note }: { note: SharedNote }) {
     setBusy(true)
     setStatus('')
     try {
-      const current = await withDemoStore((store) => store.retrieve(note.code))
+      const current = await withShareStore((store) => store.retrieve(note.code))
       if (!mounted.current) return
       if (!current.blob || !current.file || current.expiresAt <= Date.now())
         throw new Error('unavailable')
@@ -666,7 +669,7 @@ function FileDownload({ note }: { note: SharedNote }) {
     } catch {
       if (!mounted.current) return
       setStatus(
-        'Could not download. The item may have expired, storage may be unavailable, or the demo request limit was reached. Try receiving it again.',
+        'Could not download. The item may have expired, the connection may be unavailable, or the request limit was reached. Try receiving it again.',
       )
     } finally {
       if (mounted.current) setBusy(false)
@@ -745,7 +748,9 @@ const stateContent: Record<
   'not-found': {
     tag: 'Code unavailable',
     title: 'Code not found or expired.',
-    body: 'Check the code and try again, or ask the sender for a new one. Demo codes only work in the browser where they were created.',
+    body: usingBackend
+      ? 'Check the code and expiry, or ask the sender for a new one. Codes from the old browser-only demo are not stored in Firebase.'
+      : 'Check the code and try again, or ask the sender for a new one. Demo codes only work in the browser where they were created.',
   },
   invalid: {
     tag: 'Check your input',
@@ -753,9 +758,11 @@ const stateContent: Record<
     body: 'Use up to 100,000 words (20 MiB maximum), or a file under 20 MB, one of the two expiration choices, and a valid six-character code.',
   },
   network: {
-    tag: 'Demo connection error',
+    tag: usingBackend ? 'Connection unavailable' : 'Demo connection error',
     title: 'The bridge is down.',
-    body: 'This is a simulated network error. Your input is still here. Try again when you are ready.',
+    body: usingBackend
+      ? 'Could not reach the local Firebase backend. Keep the emulators running, then try again. Your input is still here.'
+      : 'This is a simulated network error. Your input is still here. Try again when you are ready.',
   },
   storage: {
     tag: 'Browser storage unavailable',
@@ -765,7 +772,9 @@ const stateContent: Record<
   'rate-limited': {
     tag: 'Request paused',
     title: 'Too many attempts. Take a moment.',
-    body: 'Wait up to a minute, then try again. Demo limits are 5 creations and 20 lookups per minute in this browser. These are not server abuse protection.',
+    body: usingBackend
+      ? 'Wait up to a minute, then try again. The server limits creation, code lookups, and download volume. Browsers sharing a network address share these limits.'
+      : 'Wait up to a minute, then try again. Demo limits are 5 creations and 20 lookups per minute in this browser. These are not server abuse protection.',
   },
 }
 
@@ -908,7 +917,7 @@ export default function App() {
         setFailure('not-found')
         setView('failure')
         try {
-          void withDemoStore((store) => store.cleanup()).catch(() => {})
+          void withShareStore((store) => store.cleanup()).catch(() => {})
         } catch {
           /* Display expiry even if storage is blocked. */
         }
@@ -930,11 +939,11 @@ export default function App() {
     const simulatedFailure = simulation
     setSimulation('normal')
     setView(operation === 'send' ? 'generating' : 'retrieving')
-    await new Promise((resolve) => setTimeout(resolve, 550))
+    if (!usingBackend) await new Promise((resolve) => setTimeout(resolve, 550))
     if (id !== request.current) return
     try {
       if (simulatedFailure !== 'normal') throw new ShareError(simulatedFailure)
-      const result = await withDemoStore((store) =>
+      const result = await withShareStore((store) =>
         operation === 'send'
           ? contentKind === 'file' && file
             ? store.createFile(file, duration)
@@ -986,10 +995,11 @@ export default function App() {
           onSend={() => navigate('send')}
         />
         <div className="demo-banner">
-          <span className="demo-label">DEMO</span>
+          <span className="demo-label">{usingBackend ? 'LOCAL' : 'DEMO'}</span>
           <p>
-            Stored only in this browser. Cross-device sharing is not connected
-            yet.
+            {usingBackend
+              ? 'Local Firebase mode. Keep the emulators running to share between browsers on this computer. Nothing is published online.'
+              : 'Stored only in this browser. Cross-device sharing is not connected yet.'}
           </p>
         </div>
         <section
@@ -1051,25 +1061,27 @@ export default function App() {
           expires.
         </p>
         <HelpSections />
-        <details className="demo-controls">
-          <summary>Demo testing options</summary>
-          <label htmlFor="simulation">Next request</label>
-          <select
-            id="simulation"
-            value={simulation}
-            onChange={(event) =>
-              setSimulation(event.target.value as Simulation)
-            }
-          >
-            <option value="normal">Normal behavior</option>
-            <option value="network">Simulate network error</option>
-            <option value="rate-limited">Simulate rate limit</option>
-          </select>
-          <p>
-            Applies once to Generate code or View content. No server is
-            connected.
-          </p>
-        </details>
+        {!usingBackend && (
+          <details className="demo-controls">
+            <summary>Demo testing options</summary>
+            <label htmlFor="simulation">Next request</label>
+            <select
+              id="simulation"
+              value={simulation}
+              onChange={(event) =>
+                setSimulation(event.target.value as Simulation)
+              }
+            >
+              <option value="normal">Normal behavior</option>
+              <option value="network">Simulate network error</option>
+              <option value="rate-limited">Simulate rate limit</option>
+            </select>
+            <p>
+              Applies once to Generate code or View content. No server is
+              connected.
+            </p>
+          </details>
+        )}
       </main>
       <footer>
         <p>

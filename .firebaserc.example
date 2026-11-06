@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "demo-textbridge",
+    "live": "YOUR_SEPARATE_TEXTBRIDGE_PROJECT_ID"
+  }
+}

@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "pnpm typecheck && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "format": "prettier --write src tests vite.config.ts playwright.config.ts",
+    "format": "prettier --write src tests functions scripts vite.config.ts playwright.config.ts playwright.firebase.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:e2e": "playwright test",
-    "check": "pnpm typecheck && pnpm test && pnpm build"
+    "check": "npm run typecheck && npm test && npm run build",
+    "emulators": "node scripts/emulators.mjs",
+    "test:backend": "node scripts/emulators.mjs test",
+    "cleanup:local": "GCLOUD_PROJECT=demo-textbridge FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 node functions/cleanup.js"
   },
   "dependencies": {
     "qrcode.react": "^4.2.0",
@@ -27,6 +30,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.0",
+    "firebase-tools": "^15.35.0",
     "jsqr": "^1.4.0",
     "pngjs": "^7.0.0",
     "prettier": "^3.9.10",

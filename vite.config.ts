@@ -10,6 +10,13 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5001',
+        rewrite: (path) =>
+          path.replace(/^\/api/, '/demo-textbridge/us-central1/api'),
+      },
+    },
     headers: { 'Cache-Control': 'no-store' },
   },
   preview: {
