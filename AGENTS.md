@@ -43,6 +43,9 @@
 - Firestore stores metadata; Storage stores both file and large text payloads.
 - Deny direct browser database/storage access. Never generate public download URLs.
 - Support light/dark themes with a persisted choice; default to system preference.
+- Receive uses one labeled native input with six decorative code slots. Preserve
+  paste, normalization, caret/selection, and the forced-colors fallback when editing.
+- Keep the wider desktop layout and subtle green/teal background with solid cards.
 - `src/index.css`: retained export styling with accessibility/responsive repairs.
 - `vite.config.ts`: local tooling. `.figma/` is inactive export provenance.
 - `tests/demo-store.test.ts`: data behavior; `tests/browser/`: user flows.

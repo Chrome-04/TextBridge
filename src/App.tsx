@@ -1,7 +1,14 @@
 import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
 import { withShareStore, usingBackend } from './share-client'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import {
   countWords,
   isValidCode,
@@ -581,6 +588,19 @@ function ReceiveView({
   onSubmit: () => void
 }) {
   const [submitted, setSubmitted] = useState(false)
+  const [selection, setSelection] = useState({ start: 0, end: 0 })
+  const [focused, setFocused] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const pendingCaret = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (pendingCaret.current !== null) {
+      inputRef.current?.setSelectionRange(
+        pendingCaret.current,
+        pendingCaret.current,
+      )
+      pendingCaret.current = null
+    }
+  })
   const invalid = submitted && !isValidCode(code)
   return (
     <>
@@ -600,21 +620,80 @@ function ReceiveView({
         <p id="code-hint">
           Spaces and hyphens are ignored. Lowercase works too.
         </p>
-        <input
-          id="sharing-code"
-          autoCapitalize="characters"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-describedby={invalid ? 'code-hint code-error' : 'code-hint'}
-          aria-invalid={invalid}
-          onChange={(event) => {
-            setCode(normalizeCode(event.target.value))
-            setSubmitted(false)
-          }}
-          placeholder="ABC234"
-          value={code}
-        />
+        <div className="segmented-code">
+          <div className="code-slots" aria-hidden="true">
+            {Array.from({ length: 6 }, (_, index) => (
+              <span
+                key={index}
+                className="code-slot"
+                data-active={focused && index === Math.min(selection.start, 5)}
+                data-selected={
+                  focused && index >= selection.start && index < selection.end
+                }
+                data-invalid={invalid}
+              >
+                {code[index] || <span className="slot-placeholder" />}
+              </span>
+            ))}
+          </div>
+          <input
+            ref={inputRef}
+            id="sharing-code"
+            autoCapitalize="characters"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-describedby={invalid ? 'code-hint code-error' : 'code-hint'}
+            aria-invalid={invalid}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onSelect={(event) => {
+              const input = event.currentTarget
+              setSelection({
+                start: input.selectionStart ?? 0,
+                end: input.selectionEnd ?? 0,
+              })
+            }}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              event.preventDefault()
+              const input = event.currentTarget
+              const bounds = input.getBoundingClientRect()
+              const position = Math.min(
+                code.length,
+                6,
+                Math.max(
+                  0,
+                  Math.floor(
+                    (event.clientX - bounds.left) / (bounds.width / 6),
+                  ),
+                ),
+              )
+              input.focus()
+              input.setSelectionRange(position, position)
+              setSelection({ start: position, end: position })
+            }}
+            onChange={(event) => {
+              const position = normalizeCode(
+                event.target.value.slice(
+                  0,
+                  event.target.selectionStart ?? event.target.value.length,
+                ),
+              ).length
+              pendingCaret.current = position
+              setCode(normalizeCode(event.target.value))
+              setSelection({ start: position, end: position })
+              setSubmitted(false)
+            }}
+            placeholder="ABC234"
+            value={code}
+          />
+        </div>
+        {code.length > 6 && !invalid && (
+          <p className="field-error" role="alert">
+            The code is too long. Enter only the six-character sharing code.
+          </p>
+        )}
         {invalid && (
           <p id="code-error" className="field-error" role="alert">
             Use exactly 6 letters or numbers, excluding O, 0, I, and 1.

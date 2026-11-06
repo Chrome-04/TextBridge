@@ -317,3 +317,39 @@ test('existing local notes migrate without shortening their original expiration'
   await receive(page, 'ABC234')
   await expect(page.locator('pre')).toHaveText('Existing demo note')
 })
+
+test('segmented code supports paste, keyboard editing, selection, and both themes', async ({
+  page,
+  context,
+}, info) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/receive')
+  const input = page.getByLabel('Enter sharing code')
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.evaluate(() => navigator.clipboard.writeText('ab-c 234'))
+  await input.focus()
+  await input.press('ControlOrMeta+V')
+  await expect(input).toHaveValue('ABC234')
+  await input.press('ArrowLeft')
+  await input.press('Backspace')
+  await expect(input).toHaveValue('ABC24')
+  await input.press('3')
+  await expect(input).toHaveValue('ABC234')
+  await input.press('ControlOrMeta+A')
+  await expect(page.locator('.code-slot[data-selected="true"]')).toHaveCount(6)
+  await input.press('Backspace')
+  await input.pressSequentially('xy7')
+  await expect(input).toHaveValue('XY7')
+  await expect(page.locator('.code-slot[data-active="true"]')).toHaveCount(1)
+  for (const theme of ['light', 'dark']) {
+    if (theme === 'dark')
+      await page.getByRole('button', { name: 'Switch to dark mode' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await input.focus()
+    await noOverflow(page)
+    await accessible(page)
+    await page.screenshot({
+      path: `artifacts/${info.project.name}-segmented-${theme}.png`,
+    })
+  }
+})
