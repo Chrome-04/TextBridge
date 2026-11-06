@@ -11,7 +11,7 @@ Verified: 24 unit/contract tests, 8 real database/Storage/Edge Function tests,
 2 desktop/mobile browser flows, TypeScript, and the production build. A real
 19,999,999-byte file round-trips through the Edge Function. Private table and RPC
 permissions, concurrent reservations/rates, expiry, and cleanup are checked.
-New sharing durations are 5 or 10 minutes; 10 minutes is the default. Previously
+New sharing durations are 5 or 10 minutes; 5 minutes is the default. Previously
 created codes keep their original expiry.
 
 ## Local use

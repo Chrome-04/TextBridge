@@ -14,7 +14,7 @@
   Links prefill Receive; they do not bypass expiry. Keep the correct local-testing notice for the selected mode.
 - Codes are six uppercase symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
   Normalize lowercase, spaces, and hyphens; reject other invalid input.
-- Expiration: 10 minutes by default, or 5 minutes. Repeat reads until expiry.
+- Expiration: 5 minutes by default, or 10 minutes. Repeat reads until expiry.
 - Anyone knowing an active code or link can retrieve its content. Never claim end-to-end
   encryption, interpret shared text as HTML, or log text/codes.
 

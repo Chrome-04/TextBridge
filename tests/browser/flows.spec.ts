@@ -56,13 +56,13 @@ test('send, copy, second note, cross-tab retrieval, reload, repeat reads, and sa
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(code)
   await page.getByRole('button', { name: 'Send another' }).click()
   await expect(
-    page.getByRole('radio', { name: '10 minutes', exact: true }),
+    page.getByRole('radio', { name: '5 minutes', exact: true }),
   ).toBeChecked()
-  await page.getByRole('radio', { name: '5 minutes', exact: true }).check()
+  await page.getByRole('radio', { name: '10 minutes', exact: true }).check()
   const second = await send(page, 'second note')
   expect(second).not.toBe(code)
   await expect(page.locator('.expiry-row')).toContainText(
-    '5 minutes from creation',
+    '10 minutes from creation',
   )
   const anotherTab = await context.newPage()
   await anotherTab.goto('/receive')
@@ -100,7 +100,7 @@ test('word boundaries, default duration, and accessible responsive send/receive'
     page.getByRole('button', { name: 'Generate code' }),
   ).toBeDisabled()
   await expect(
-    page.getByRole('radio', { name: '10 minutes', exact: true }),
+    page.getByRole('radio', { name: '5 minutes', exact: true }),
   ).toBeChecked()
   await noOverflow(page)
   await accessible(page)

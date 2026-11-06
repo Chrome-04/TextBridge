@@ -25,7 +25,7 @@ test('independent browser sessions share exact text and files through the databa
     const text =
       'Firebase cross-browser test 🌉\nမြန်မာစာ 日本語\n<script>plain text</script>'
     await expect(
-      send.getByRole('radio', { name: '10 minutes', exact: true }),
+      send.getByRole('radio', { name: '5 minutes', exact: true }),
     ).toBeChecked()
     await expect(
       send.getByRole('radio', { name: '30 minutes', exact: true }),
@@ -54,6 +54,10 @@ test('independent browser sessions share exact text and files through the databa
       fullPage: true,
     })
     await send.getByRole('button', { name: 'Send another' }).click()
+    await expect(
+      send.getByRole('radio', { name: '5 minutes', exact: true }),
+    ).toBeChecked()
+    await send.getByRole('radio', { name: '10 minutes', exact: true }).check()
     await send.getByRole('radio', { name: 'File', exact: true }).check()
     const content = Buffer.from(
       '%PDF-1.4\nSynthetic Firebase download test\n%%EOF',

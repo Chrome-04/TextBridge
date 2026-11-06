@@ -41,7 +41,7 @@ for disk space before starting; runtime downloads and data need additional room.
 
 - Text: up to 100,000 whitespace-separated words and 20 MiB UTF-8.
 - Files: one file strictly under 20,000,000 bytes; download only.
-- New codes last **5 or 10 minutes**, with **10 minutes selected by default**.
+- New codes last **5 or 10 minutes**, with **5 minutes selected by default**.
 - Existing codes keep their original expiration. Reads do not extend their time.
 - Code, sharing link, local QR rendering, live countdown, copy, paste, and clear.
 - Comments request only a nickname (40 characters) and comment (1,000 characters).

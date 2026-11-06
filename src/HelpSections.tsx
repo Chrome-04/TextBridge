@@ -40,7 +40,7 @@ const questions = [
   {
     question: 'When does my code expire?',
     answer:
-      'Choose 5 minutes or 10 minutes (the default) when sending. You can retrieve the content repeatedly until that time; receiving it does not extend its lifetime. After expiry it becomes unavailable in TextBridge. Copies and files already downloaded remain with the recipient.',
+      'Choose 5 minutes (the default) or 10 minutes when sending. You can retrieve the content repeatedly until that time; receiving it does not extend its lifetime. After expiry it becomes unavailable in TextBridge. Copies and files already downloaded remain with the recipient.',
   },
   {
     question: 'Why does my code say “not found or expired”?',

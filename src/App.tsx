@@ -1155,7 +1155,7 @@ export default function App() {
   const [view, setView] = useState<View>(mode)
   const [note, setNote] = useState<SharedNote | null>(null)
   const [text, setText] = useState('')
-  const [duration, setDuration] = useState<Duration>('10 minutes')
+  const [duration, setDuration] = useState<Duration>('5 minutes')
   const [contentKind, setContentKind] = useState<'text' | 'file'>('text')
   const [file, setFile] = useState<File | null>(null)
   const [code, setCode] = useState(codeFromLocation)
@@ -1314,7 +1314,7 @@ export default function App() {
             <GeneratedView
               note={note}
               onNew={() => {
-                setDuration('10 minutes')
+                setDuration('5 minutes')
                 navigate('send')
               }}
             />
