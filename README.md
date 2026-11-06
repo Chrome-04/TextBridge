@@ -5,6 +5,10 @@ now uses **local Firebase Functions, Firestore, and Storage emulators**. No live
 Firebase services, billing, hosting, or deployment are configured by this code.
 The public comments section also uses local Firestore through the backend.
 
+Supabase migration files are being prepared separately. See
+[SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for the verification status and remaining
+steps. Supabase is not connected or deployed; Firebase remains the working default.
+
 ## Start in VS Code
 
 Open this folder, `TextBridge Sharing Prototype`. Use Node 24 (the Functions runtime), pnpm 11.25.0, and Java 21+. `.mise.toml` pins the frontend tools.

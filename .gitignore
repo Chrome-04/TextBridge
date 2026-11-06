@@ -45,3 +45,8 @@ exports/
 
 # Project-local Java runtime and downloads
 .tools/
+.supabase-local/
+supabase/.temp/
+supabase/.branches/
+supabase/.env*
+!supabase/.env.example

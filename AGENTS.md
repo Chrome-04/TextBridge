@@ -19,6 +19,14 @@
   encryption, interpret shared text as HTML, or log text/codes.
 
 ## Setup and verification
+- The user has selected Supabase for the future public backend. Migration source
+  is in `supabase/`; see `SUPABASE_SETUP.md`. It is a preparation checkpoint only:
+  handler contract tests pass, but real SQL/Storage tests are blocked by local
+  disk space. Keep Firebase as default until real integration tests pass. Do not
+  represent the project as connected or publicly deployed. No cloud changes have
+  been made. Complete trusted hosting routing, abuse controls, cleanup, and product
+  labels before enabling live mode. Local Supabase uses its isolated launcher;
+  the demo-textbridge CLI rule applies to Firebase commands only.
 - Use pnpm and preserve the lockfile. Run `pnpm install --frozen-lockfile`.
 - Start `pnpm dev` explicitly; local URL is http://127.0.0.1:5173.
 - `npm run check`: type checking, demo data tests, and production build.
