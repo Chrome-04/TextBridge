@@ -28,6 +28,8 @@
 
 ## Architecture
 - `src/App.tsx`: UI, demo simulation, and `/` / `/receive` history routing.
+- `src/HelpSections.tsx`: how-it-works guide and keyboard-accessible FAQ.
+  Comments and database work are deferred until the user resumes them.
 - `src/demo-store.ts`: validation, expiry, and demo limits.
 - `src/indexed-store.ts`: IndexedDB transaction adapter and legacy localStorage migration.
 - Support light/dark themes with a persisted choice; default to system preference.

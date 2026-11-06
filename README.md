@@ -33,6 +33,11 @@ unsent drafts do not survive a full reload. Text and files are stored unencrypte
 IndexedDB. Anyone knowing an active code or link can access its content; there is no
 end-to-end encryption. Use sample data for this demo.
 
+The guide below the tool explains **How TextBridge works**. The **FAQ** opens
+answers about supported content, expiry, privacy, and current demo limitations.
+Send uses an up arrow; Receive uses a down arrow. Comments and their database
+connection are deferred at the user’s request.
+
 Expand **Demo testing options** to simulate a network failure or rate limit on
 the next operation. The browser also demonstrates limits of 5 creations and 20
 lookups per minute. These are bypassable local limits, not server protection.

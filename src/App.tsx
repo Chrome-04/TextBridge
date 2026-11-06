@@ -1,4 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react'
+import HelpSections from './HelpSections'
 import { withDemoStore } from './indexed-store'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
@@ -170,7 +171,7 @@ function ModeTabs({
         >
           <Icon size={17}>
             <path
-              d="M5 12h14m-5-5 5 5-5 5"
+              d="M12 19V5m-5 5 5-5 5 5"
               stroke="currentColor"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -190,7 +191,7 @@ function ModeTabs({
         >
           <Icon size={17}>
             <path
-              d="M19 12H5m5-5-5 5 5 5"
+              d="M12 5v14m-5-5 5 5 5-5"
               stroke="currentColor"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -1049,6 +1050,7 @@ export default function App() {
           Anyone with an active code or link can access its content until it
           expires.
         </p>
+        <HelpSections />
         <details className="demo-controls">
           <summary>Demo testing options</summary>
           <label htmlFor="simulation">Next request</label>

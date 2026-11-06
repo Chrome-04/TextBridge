@@ -1620,3 +1620,173 @@ footer {
     flex: 1;
   }
 }
+
+/* The guide stays below the sharing tool in both themes. */
+.help-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  color: var(--muted);
+}
+.help-nav button {
+  min-height: 44px;
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+.help-nav button:hover {
+  text-decoration: underline;
+}
+.help-section {
+  margin-top: 52px;
+  padding-top: 36px;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 24px;
+  border-radius: 2px;
+}
+.help-section:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 8px;
+}
+.help-section h2 {
+  color: var(--text);
+  font-size: clamp(25px, 4vw, 32px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  margin: 10px 0 12px;
+}
+.help-intro,
+.how-steps p,
+.help-demo-note,
+.faq-list p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 26px 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.how-steps li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 20px;
+}
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+}
+.how-steps h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 20px 0 10px;
+  line-height: 1.5;
+}
+.help-demo-note {
+  padding-left: 16px;
+  border-left: 2px solid var(--accent);
+}
+.help-demo-note strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.faq-list {
+  margin-top: 26px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.faq-list details + details {
+  border-top: 1px solid var(--border);
+}
+.faq-list summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 64px;
+  padding: 20px 24px;
+  list-style: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.faq-list summary::-webkit-details-marker {
+  display: none;
+}
+.faq-list summary:hover {
+  background: var(--surface-raised);
+}
+.faq-list summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+.faq-indicator {
+  position: relative;
+  flex: 0 0 16px;
+  height: 16px;
+  color: var(--accent);
+}
+.faq-indicator::before,
+.faq-indicator::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+  width: 12px;
+  height: 2px;
+  top: 7px;
+  left: 2px;
+}
+.faq-indicator::after {
+  transform: rotate(90deg);
+}
+.faq-list details[open] .faq-indicator::after {
+  display: none;
+}
+.faq-list p {
+  margin: 0;
+  padding: 0 24px 24px;
+  max-width: 76ch;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .how-steps {
+    grid-template-columns: 1fr;
+  }
+  .how-steps li {
+    padding: 22px;
+  }
+  .help-section {
+    margin-top: 36px;
+    padding-top: 28px;
+  }
+  .faq-list summary {
+    padding: 18px;
+    gap: 14px;
+  }
+  .faq-list p {
+    padding: 0 18px 22px;
+  }
+}
