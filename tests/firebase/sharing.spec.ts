@@ -16,7 +16,10 @@ test('independent browser sessions share exact text and files through Firebase',
   try {
     await send.goto('http://127.0.0.1:5175')
     await expect(
-      send.getByText('Firebase · local testing', { exact: true }),
+      send.getByText(
+        'Local test only · share between browsers on this computer while Firebase emulators are running.',
+        { exact: true },
+      ),
     ).toBeVisible()
     const text =
       'Firebase cross-browser test 🌉\nမြန်မာစာ 日本語\n<script>plain text</script>'
@@ -44,13 +47,11 @@ test('independent browser sessions share exact text and files through Firebase',
     const content = Buffer.from(
       '%PDF-1.4\nSynthetic Firebase download test\n%%EOF',
     )
-    await send
-      .getByLabel('Choose a file')
-      .setInputFiles({
-        name: 'cross-browser.pdf',
-        mimeType: 'application/pdf',
-        buffer: content,
-      })
+    await send.getByLabel('Choose a file').setInputFiles({
+      name: 'cross-browser.pdf',
+      mimeType: 'application/pdf',
+      buffer: content,
+    })
     await send.getByRole('button', { name: 'Generate code' }).click()
     await expect(send.getByLabel('Sharing link', { exact: true })).toBeVisible()
     await send.screenshot({

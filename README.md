@@ -3,7 +3,7 @@
 React, TypeScript, and Vite, preserving the original Figma Make design. Sharing
 now uses **local Firebase Functions, Firestore, and Storage emulators**. No live
 Firebase services, billing, hosting, or deployment are configured by this code.
-Comments remain deferred.
+The public comments section also uses local Firestore through the backend.
 
 ## Start in VS Code
 
@@ -55,6 +55,11 @@ when the backend is unavailable: an error is shown and the draft is retained.
 - Code, `/receive#CODE` link, and QR. The fragment avoids including the code in
   the initial page request. Create/retrieve operations use POST bodies, not URLs.
 - Light/dark modes, mobile layouts, How it works, and keyboard-accessible FAQ.
+- Comments: nickname (up to 40 characters) and plain-text feedback (up to 1,000).
+  The newest 20 are displayed; use Refresh comments to see posts from another
+  browser. No account, email, or phone number is requested. Comments remain in
+  the local database across normal emulator restarts and do not share the text/file
+  expiry timer. They are not copied into browser storage or simulated in demo mode.
 
 This local address does not work on a phone: `127.0.0.1` points to the device
 opening it. A reachable deployment is a later step, requiring explicit approval.
@@ -70,6 +75,8 @@ downloaded files cannot be revoked; the app does not scan files for malware.
   deployment gates, App Check verification hook, and function resource limits.
 - `functions/service.js`: backend validation, random codes, atomic Firestore
   reservations, pending-to-ready uploads, timestamps, rate limits, and expiry.
+- `src/CommentsSection.tsx` and `functions/comments.js`: comment form/feed and
+  bounded backend create/list APIs, server timestamps, safe plain-text display.
 - Firestore holds metadata; Cloud Storage holds both text and file bytes. Large
   notes never have to fit inside a Firestore document. An upload becomes readable
   only after its blob is saved. Expiry is checked before and after blob retrieval.
@@ -86,6 +93,13 @@ client and 400 MiB globally per window; global request limits are 100 creates an
 Window boundaries can permit bursts. In emulators, browsers share the loopback
 address limit; spoofed forwarded headers do not change it. Counters store hashed
 addresses, not raw IPs. Application code does not log shared content or codes.
+Comments have separate atomic counters: 3 posts per client and 30 globally per
+minute, plus 30 list requests per client and 500 globally. Invalid comment fields
+count toward posting limits. Refresh is manual, so there is no polling loop.
+Nicknames are unverified and comments become visible immediately. There is no
+moderation, reporting, author deletion, or automated spam filtering yet; local
+records can be removed using the Emulator UI. Review moderation before public
+launch. Comment bodies and nicknames are not logged by application code.
 
 ## Checks
 
@@ -103,6 +117,9 @@ an environment flag. Browser tests use synthetic content. Tests cover exact
 Unicode and file bytes, large payloads, input validation, collisions, concurrent
 rate counters, expiry, direct-access denial, no-store responses, and independent
 browser sessions. Traces/screenshots/logs/emulator data are ignored by Git.
+Comment tests cover validation, server timestamps, newest-first limits, concurrent
+rate limits, denied direct database access, cross-session persistence, plain-text
+rendering, mobile accessibility, and retaining drafts after failures.
 
 ## Cleanup and remaining live setup
 

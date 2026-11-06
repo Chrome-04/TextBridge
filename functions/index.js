@@ -4,6 +4,7 @@ import { getStorage } from 'firebase-admin/storage'
 import { getAppCheck } from 'firebase-admin/app-check'
 import { onRequest } from 'firebase-functions/v2/https'
 import { createShareService, ApiError, MAX_TEXT_BYTES } from './service.js'
+import { createCommentService } from './comments.js'
 
 const emulator = process.env.FUNCTIONS_EMULATOR === 'true'
 const projectId = process.env.GCLOUD_PROJECT
@@ -14,6 +15,7 @@ const app = initializeApp({
     : process.env.TEXTBRIDGE_STORAGE_BUCKET,
 })
 let service
+let comments
 function getService() {
   if (
     emulator &&
@@ -78,6 +80,35 @@ export const api = onRequest(
       const client = emulator
         ? req.socket.remoteAddress || 'local'
         : req.ip || 'unknown'
+      if (req.path === '/comments' || req.path === '/comments/list') {
+        if (!req.rawBody || req.rawBody.length > 8192)
+          throw new ApiError(400, 'invalid')
+        let input
+        try {
+          input = JSON.parse(req.rawBody.toString('utf8'))
+        } catch {
+          throw new ApiError(400, 'invalid')
+        }
+        const commentStore = (comments ??= createCommentService({
+          db: getFirestore(app),
+          salt: emulator
+            ? 'local-emulator-only'
+            : process.env.TEXTBRIDGE_RATE_SALT,
+        }))
+        if (req.path === '/comments/list') {
+          if (
+            !input ||
+            typeof input !== 'object' ||
+            Array.isArray(input) ||
+            Object.keys(input).length
+          )
+            throw new ApiError(400, 'invalid')
+          res.json({ comments: await commentStore.list(client) })
+        } else {
+          res.status(201).json(await commentStore.post(input, client))
+        }
+        return
+      }
       if (req.path === '/shares') {
         if (
           Number(req.get('content-length')) > MAX_TEXT_BYTES ||

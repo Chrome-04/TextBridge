@@ -93,3 +93,26 @@ export async function withShareStore<T>(
   if (usingBackend) return operation(backend)
   return withDemoStore(operation)
 }
+
+export type PublicComment = {
+  id: string
+  nickname: string
+  comment: string
+  createdAt: number
+}
+async function commentsRequest<T>(path: string, body: object): Promise<T> {
+  const { body: result } = await request(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  try {
+    return JSON.parse(new TextDecoder().decode(result)) as T
+  } catch {
+    throw new ShareError('network')
+  }
+}
+export const listComments = () =>
+  commentsRequest<{ comments: PublicComment[] }>('/comments/list', {})
+export const postComment = (nickname: string, comment: string) =>
+  commentsRequest<PublicComment>('/comments', { nickname, comment })

@@ -1,5 +1,6 @@
 import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
+import CommentsSection from './CommentsSection'
 import { withShareStore, usingBackend } from './share-client'
 import {
   useEffect,
@@ -27,6 +28,21 @@ type Mode = 'send' | 'receive'
 type View =
   Mode | 'generating' | 'generated' | 'retrieving' | 'received' | 'failure'
 type Simulation = 'normal' | 'network' | 'rate-limited'
+
+const sectionHashes = new Set([
+  '#main',
+  '#comments',
+  '#how-it-works',
+  '#faq',
+  '#contact',
+])
+function codeFromLocation() {
+  const value = normalizeCode(window.location.hash.slice(1))
+  return window.location.pathname.replace(/\/$/, '') === '/receive' &&
+    isValidCode(value)
+    ? value
+    : ''
+}
 
 function Icon({
   children,
@@ -125,6 +141,9 @@ function Header({
           <a className="nav-link" href="#faq">
             FAQ
           </a>
+          <a className="nav-link" href="#comments">
+            Comments
+          </a>
           <a className="nav-link" href="#contact">
             Contact
           </a>
@@ -151,6 +170,7 @@ function Header({
             <button onClick={onReceive}>Receive</button>
             <a href="#how-it-works">How it works</a>
             <a href="#faq">FAQ</a>
+            <a href="#comments">Comments</a>
             <a href="#contact">Contact</a>
           </div>
         </details>
@@ -1138,9 +1158,7 @@ export default function App() {
   const [duration, setDuration] = useState<Duration>('10 minutes')
   const [contentKind, setContentKind] = useState<'text' | 'file'>('text')
   const [file, setFile] = useState<File | null>(null)
-  const [code, setCode] = useState(() =>
-    normalizeCode(window.location.hash.slice(1)),
-  )
+  const [code, setCode] = useState(codeFromLocation)
   const [failure, setFailure] = useState<Failure>('not-found')
   const [simulation, setSimulation] = useState<Simulation>('normal')
   const request = useRef(0)
@@ -1161,7 +1179,8 @@ export default function App() {
   }
   useEffect(() => {
     const pop = () => {
-      setCode(normalizeCode(window.location.hash.slice(1)))
+      if (sectionHashes.has(window.location.hash)) return
+      setCode(codeFromLocation())
       navigate(
         window.location.pathname.replace(/\/$/, '') === '/receive'
           ? 'receive'
@@ -1331,6 +1350,7 @@ export default function App() {
           Anyone with an active code or link can access its content until it
           expires.
         </p>
+        <CommentsSection />
         <HelpSections />
         {!usingBackend && (
           <details className="demo-controls">

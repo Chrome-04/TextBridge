@@ -35,7 +35,12 @@
 ## Architecture
 - `src/App.tsx`: UI, demo simulation, and `/` / `/receive` history routing.
 - `src/HelpSections.tsx`: how-it-works guide and keyboard-accessible FAQ.
-  Comments remain deferred; Firebase sharing work has resumed.
+- `src/CommentsSection.tsx`: public nickname/comment form and newest 20 comments.
+  Firebase-only: no simulated comment data or browser-storage fallback. Render
+  comments as plain text. Keep drafts after failures and disclose public visibility.
+- `functions/comments.js`: server validation (nickname 40, comment 1,000 characters),
+  server timestamps, and atomic posting/list limits. Direct database access stays
+  denied. Comments persist independently of sharing expiry. No moderation UI yet.
 - `src/demo-store.ts`: validation, expiry, and demo limits.
 - `src/indexed-store.ts`: retained old demo adapter and localStorage migration.
 - `src/share-client.ts`: Firebase HTTP client; VITE_SHARE_MODE=demo selects old demo.
