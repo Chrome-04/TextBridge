@@ -341,6 +341,17 @@ function SendView({
           <>
             <div className="field-head">
               <label htmlFor="shared-text">Text or link</label>
+              <button
+                type="button"
+                className="input-action"
+                disabled={!text}
+                onClick={() => {
+                  setText('')
+                  document.getElementById('shared-text')?.focus()
+                }}
+              >
+                Clear text
+              </button>
               <span
                 id="word-count"
                 className={count > 95000 ? 'count count-warning' : 'count'}
@@ -499,17 +510,42 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 }
 
 function Expiry({ note }: { note: SharedNote }) {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const update = () => setNow(Date.now())
+    const timer = window.setInterval(update, 1000)
+    document.addEventListener('visibilitychange', update)
+    window.addEventListener('pageshow', update)
+    update()
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', update)
+      window.removeEventListener('pageshow', update)
+    }
+  }, [note.expiresAt])
+  const seconds = Math.max(0, Math.ceil((note.expiresAt - now) / 1000))
+  const remaining = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
   return (
-    <span>
-      Expires at{' '}
-      <time dateTime={new Date(note.expiresAt).toISOString()}>
-        {new Date(note.expiresAt).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })}
-      </time>{' '}
-      · {note.duration} from creation
+    <span className="expiry-details">
+      <span
+        className="expiry-countdown"
+        role="timer"
+        aria-live="off"
+        aria-label={`${remaining} remaining`}
+      >
+        {seconds ? `${remaining} remaining` : 'Expired'}
+      </span>
+      <span>
+        Expires at{' '}
+        <time dateTime={new Date(note.expiresAt).toISOString()}>
+          {new Date(note.expiresAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })}
+        </time>{' '}
+        · {note.duration} from creation
+      </span>
     </span>
   )
 }
@@ -638,8 +674,53 @@ function ReceiveView({
   const [submitted, setSubmitted] = useState(false)
   const [selection, setSelection] = useState({ start: 0, end: 0 })
   const [focused, setFocused] = useState(false)
+  const [clipboardMessage, setClipboardMessage] = useState('')
+  const [pasting, setPasting] = useState(false)
+  const pasteRequest = useRef(0)
+  useEffect(
+    () => () => {
+      pasteRequest.current++
+    },
+    [],
+  )
   const inputRef = useRef<HTMLInputElement>(null)
   const pendingCaret = useRef<number | null>(null)
+  const replaceCode = (value: string) => {
+    pasteRequest.current++
+    setPasting(false)
+    setCode(value)
+    setSubmitted(false)
+    pendingCaret.current = value.length
+    setSelection({ start: value.length, end: value.length })
+    inputRef.current?.focus()
+  }
+  const pasteCode = (raw: string) => {
+    const value = normalizeCode(raw)
+    if (!isValidCode(value)) {
+      setClipboardMessage(
+        'Copy a six-character sharing code, then paste again. The current code has not changed.',
+      )
+      return
+    }
+    replaceCode(value)
+    setClipboardMessage('Code pasted.')
+  }
+  const readClipboard = async () => {
+    const id = ++pasteRequest.current
+    setPasting(true)
+    setClipboardMessage('')
+    try {
+      const value = await navigator.clipboard.readText()
+      if (id === pasteRequest.current) pasteCode(value)
+    } catch {
+      if (id === pasteRequest.current)
+        setClipboardMessage(
+          'Clipboard access was blocked. Use Ctrl+V, Command+V, or your device’s Paste option in the code box.',
+        )
+    } finally {
+      if (id === pasteRequest.current) setPasting(false)
+    }
+  }
   useLayoutEffect(() => {
     if (pendingCaret.current !== null) {
       inputRef.current?.setSelectionRange(
@@ -696,7 +777,10 @@ function ReceiveView({
             spellCheck={false}
             aria-describedby={invalid ? 'code-hint code-error' : 'code-hint'}
             aria-invalid={invalid}
-            onFocus={() => setFocused(true)}
+            onFocus={(event) => {
+              setFocused(true)
+              if (code.length === 6) event.currentTarget.select()
+            }}
             onBlur={() => setFocused(false)}
             onSelect={(event) => {
               const input = event.currentTarget
@@ -721,28 +805,83 @@ function ReceiveView({
                 ),
               )
               input.focus()
+              if (code.length === 6 && !focused) {
+                input.select()
+                setSelection({ start: 0, end: 6 })
+                return
+              }
               input.setSelectionRange(position, position)
               setSelection({ start: position, end: position })
             }}
             onChange={(event) => {
+              pasteRequest.current++
+              setPasting(false)
+              setClipboardMessage('')
               const position = normalizeCode(
                 event.target.value.slice(
                   0,
                   event.target.selectionStart ?? event.target.value.length,
                 ),
               ).length
-              pendingCaret.current = position
-              setCode(normalizeCode(event.target.value))
-              setSelection({ start: position, end: position })
+              let next = normalizeCode(event.target.value)
+              let caret = position
+              if (next.length > 6) {
+                // Full codes use overwrite behavior, including mobile text input.
+                if (code.length === 6 && next.length === 7) {
+                  const start = Math.max(0, position - 1)
+                  const inserted = next.slice(start, position)
+                  next =
+                    start >= 6
+                      ? inserted
+                      : code.slice(0, start) + inserted + code.slice(start + 1)
+                  caret = start >= 6 ? 1 : position
+                } else {
+                  setClipboardMessage(
+                    'Enter six characters only, or use Paste code to replace the code.',
+                  )
+                  event.currentTarget.value = code
+                  return
+                }
+              }
+              pendingCaret.current = caret
+              setCode(next)
+              setSelection({ start: caret, end: caret })
               setSubmitted(false)
+            }}
+            onPaste={(event) => {
+              event.preventDefault()
+              pasteRequest.current++
+              setPasting(false)
+              pasteCode(event.clipboardData.getData('text'))
             }}
             placeholder="ABC234"
             value={code}
           />
         </div>
-        {code.length > 6 && !invalid && (
-          <p className="field-error" role="alert">
-            The code is too long. Enter only the six-character sharing code.
+        <div className="code-input-actions">
+          <button
+            type="button"
+            className="input-action"
+            disabled={pasting}
+            onClick={readClipboard}
+          >
+            {pasting ? 'Pasting…' : 'Paste code'}
+          </button>
+          <button
+            type="button"
+            className="input-action"
+            disabled={!code && !pasting}
+            onClick={() => {
+              replaceCode('')
+              setClipboardMessage('Code cleared.')
+            }}
+          >
+            Clear code
+          </button>
+        </div>
+        {clipboardMessage && (
+          <p className="clipboard-message" role="status">
+            {clipboardMessage}
           </p>
         )}
         {invalid && (

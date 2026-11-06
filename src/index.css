@@ -57,6 +57,44 @@
   flex-direction: column;
 }
 
+.input-action {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.input-action:hover:not(:disabled) {
+  background: var(--surface-raised);
+}
+.input-action:disabled {
+  opacity: 0.45;
+}
+.code-input-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.receiver-card > .clipboard-message {
+  max-width: 560px;
+  margin: 8px auto;
+  line-height: 1.6;
+  color: var(--text);
+}
+.expiry-details {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.expiry-countdown {
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
 .site-header {
   height: 72px;
   border-bottom: 1px solid rgba(41, 46, 42, 0.7);
