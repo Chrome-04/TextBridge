@@ -96,7 +96,14 @@
   secrets/. No website/backend deployment or billing change has occurred.
 - firebase.hosting.json is the separate Hosting/Auth deployment config. Never
   deploy legacy Firebase Functions/Firestore/Storage for the Supabase public app.
-- User's next setup: Firebase Anonymous Auth and App Check provider registration.
-  Real provider tokens, cloud cleanup, and two-device checks remain pending.
+- Firebase Anonymous Auth and the saved reCAPTCHA Enterprise App Check provider
+  have been verified. Ignored .env.production.local is complete and the real public
+  build passes. Real provider token exchanges, cloud cleanup, and two-device checks
+  remain pending until authorized deployment.
+- supabase/deployment/cleanup.sql prepares a one-minute Vault-backed cleanup job;
+  cleanup-status.sql checks HTTP responses and backlog. The real local extensions
+  passed scripts/check-cleanup-local.mjs in a rolled-back transaction. No cloud
+  schedule or website/backend has been deployed. Store Vault values privately
+  using bound parameters, never inline tracked SQL or browser configuration.
 - Public builds use npm run build:public, which rejects incomplete configuration.
 - 31 unit/contract tests + 8 real local backend tests + 2 browser flows pass.

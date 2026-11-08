@@ -9,6 +9,11 @@ in ignored `secrets/` files. The expense tracker has not been changed.
 
 The website and Supabase backend have **not been deployed**. Live access remains
 disabled. The local preview still uses local Supabase and 5 minutes by default.
+On November 8, Firebase Anonymous Auth and the saved reCAPTCHA Enterprise App Check
+provider were verified through the authenticated Firebase API. Both Hosting domains
+are authorized for Firebase Auth. The registered site key is saved privately in
+ignored `.env.production.local`; the real public build now passes. No backend
+secret is included in this browser configuration.
 
 Prepared and checked:
 
@@ -33,7 +38,7 @@ Prepared and checked:
 - Production labels no longer describe local testing when `VITE_SHARE_STAGE=live`.
 - `npm run build:public` refuses missing or placeholder configuration.
 
-## The remaining console setup
+## Console setup (completed and verified)
 
 In the **TextBridge** Firebase project only:
 
@@ -66,9 +71,19 @@ only a Firebase console enforcement toggle does not secure the custom API.
    authorized deployment to the verified Supabase TextBridge project. Firebase JWT verification is performed inside the
    function, so the Supabase gateway's Supabase-JWT check must be disabled for it.
    Never disable the handler's own Firebase token verification.
-4. Configure authenticated scheduled cleanup and failure monitoring. A browser
-   must never receive the cleanup secret. Expiry already stops reads immediately;
-   physical blob deletion is separate and must not be left indefinitely unscheduled.
+4. Configure authenticated scheduled cleanup and failure monitoring. The prepared
+   `supabase/deployment/cleanup.sql` uses pg_cron, pg_net, and Vault to call cleanup
+   every minute. Store the function's `/cleanup` HTTPS URL as `textbridge_cleanup_url`
+   and the existing private cleanup secret as `textbridge_cleanup_secret` in Vault,
+   using bound SQL parameters; never place the secret in the tracked SQL or cron
+   command. Apply this file only after the migrations and Edge Function are deployed.
+   The Edge Function's live gate must be enabled for cleanup to succeed.
+   `supabase/deployment/cleanup-status.sql` checks actual HTTP responses, scheduler
+   health, and expired/orphan backlog. These are owner dashboard checks, not an email
+   alert service. Request references expire after six hours and this job's run history
+   is pruned after seven days. A browser must never receive the cleanup secret.
+   Expiry already stops reads immediately; physical blob deletion is separate and
+   must not be left indefinitely unscheduled.
 5. Build the public version, review Hosting files, then request the user's explicit
    authorization for cloud deployment/publication. Deploy with an explicit project
    target and only the intended Hosting/Auth services. Never run an untargeted
@@ -83,18 +98,23 @@ Example Hosting command for the later authorized stage, after review:
 ./node_modules/.bin/firebase deploy --only hosting,auth --config firebase.hosting.json --project YOUR_TEXTBRIDGE_PROJECT_ID
 ```
 
-This document is not permission to deploy or change billing. Provider registration,
-cloud migration/function deployment, scheduled cleanup, and two-device production
-verification are still pending. Local crypto tests use generated test signing keys;
-real Google-issued tokens cannot be tested until the provider is configured.
+This document is not permission to deploy or change billing. Cloud migration/function
+deployment, installation of scheduled cleanup, and two-device production verification
+are still pending. Local crypto tests use generated test signing keys; actual
+Google-issued token exchanges still require testing on the deployed allowed domain.
 
 ## Checks performed
 
 31 unit/contract tests, including signed-token forgery/project/expiry checks;
 8 real local Supabase database/Storage/Edge tests; and 2 independent-session desktop/
 mobile browser flows pass. The public bundle compiles using synthetic public
-configuration into ignored artifacts. The public build correctly refuses the
-currently incomplete real production configuration.
+configuration into ignored artifacts. The public build also passes with the real
+registered browser configuration. `node scripts/check-cleanup-local.mjs` verified
+the cleanup schedule, Vault-backed request header, owner-only permissions, and
+status queries using the real local pg_cron/pg_net/Vault extensions. All test DDL,
+Vault values, and queued HTTP requests were rolled back; no requests were sent and
+no schedule was installed. The cloud schedule still requires installation and
+an actual successful response after authorized deployment.
 
 References:
 [Firebase Hosting](https://firebase.google.com/docs/hosting),
@@ -102,4 +122,7 @@ References:
 [custom backend App Check verification](https://firebase.google.com/docs/app-check/custom-resource-backend),
 [Firebase ID token verification](https://firebase.google.com/docs/auth/admin/verify-id-tokens),
 [App Check web setup](https://firebase.google.com/docs/app-check/web/recaptcha-enterprise-provider),
-[Supabase CORS](https://supabase.com/docs/guides/functions/cors).
+[Supabase CORS](https://supabase.com/docs/guides/functions/cors),
+[scheduled functions](https://supabase.com/docs/guides/functions/schedule-functions),
+[pg_net response monitoring](https://supabase.com/docs/guides/database/extensions/pg_net),
+[Vault](https://supabase.com/docs/guides/database/vault).
