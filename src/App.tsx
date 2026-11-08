@@ -39,6 +39,7 @@ const sectionHashes = new Set([
   '#comments',
   '#how-it-works',
   '#faq',
+  '#about',
   '#contact',
 ])
 function codeFromLocation() {
@@ -149,6 +150,9 @@ function Header({
           <a className="nav-link" href="#comments">
             Comments
           </a>
+          <a className="nav-link" href="#about">
+            About
+          </a>
           <a className="nav-link" href="#contact">
             Contact
           </a>
@@ -176,6 +180,7 @@ function Header({
             <a href="#how-it-works">How it works</a>
             <a href="#faq">FAQ</a>
             <a href="#comments">Comments</a>
+            <a href="#about">About</a>
             <a href="#contact">Contact</a>
           </div>
         </details>

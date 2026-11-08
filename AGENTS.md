@@ -45,6 +45,9 @@
 ## Architecture
 - `src/App.tsx`: UI, demo simulation, and `/` / `/receive` history routing.
 - `src/HelpSections.tsx`: how-it-works guide and keyboard-accessible FAQ.
+- `src/AboutSection.tsx`: the founder's classroom story before Contact, with an
+  English/Myanmar language switch that changes only this section. Owner-editable
+  copy is in `src/about-story.ts`; preserve the user's informal Burmese voice.
 - `src/contact-details.ts`: owner-editable public contact details. Keep placeholders
   empty until the user fills them; do not invent personal details. Contact cards
   display values only; email opens the visitor's email app.

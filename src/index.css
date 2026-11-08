@@ -1884,6 +1884,71 @@ footer {
   line-height: 1.8;
 }
 
+.story-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+.story-heading > div:first-child {
+  min-width: 0;
+}
+.story-language {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.story-language button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.story-language button[aria-pressed='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+.story-language button:hover {
+  color: var(--text);
+}
+.story-language button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.story-copy {
+  max-width: 78ch;
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.story-copy p + p {
+  margin-top: 18px;
+}
+.about-section :lang(my) {
+  font-family: 'Myanmar Text', 'Myanmar MN', 'Noto Sans Myanmar', sans-serif;
+  letter-spacing: normal;
+  line-height: 2;
+}
+@media (max-width: 640px) {
+  .story-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .story-copy {
+    font-size: 14px;
+  }
+}
+
 /* Compact sharing workspace: keep the mode and content choices together. */
 .page {
   width: min(100% - 80px, 1400px);

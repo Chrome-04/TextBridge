@@ -1,5 +1,6 @@
 import { usingBackend, isLive } from './share-client'
 import { contactDetails } from './contact-details'
+import AboutSection from './AboutSection'
 const steps = [
   {
     title: 'Choose what to share',
@@ -125,6 +126,7 @@ export default function HelpSections() {
           ))}
         </div>
       </section>
+      <AboutSection />
       <section
         id="contact"
         aria-labelledby="contact-title"
