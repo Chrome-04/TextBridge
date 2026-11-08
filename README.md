@@ -64,8 +64,8 @@ public contact cards, not a contact-message collection form.
 
 ## Architecture
 
-`src/share-client.ts` calls same-origin `/api` endpoints. Vite forwards local
-requests to the Supabase Edge Function. `supabase/functions/api/handler.ts`
+`src/share-client.ts` calls same-origin `/api` locally and the configured HTTPS
+Supabase URL in a public build. Vite forwards local requests to the Edge Function. `supabase/functions/api/handler.ts`
 validates requests, applies limits, reserves codes, and reads private payloads.
 `supabase/migrations/` contains the database schema and expiry update.
 
@@ -80,7 +80,7 @@ client, with global request limits of 100 and 400 respectively. Upload/download
 byte limits are 100 MiB per client and 400 MiB globally per action/window. Comments
 allow 3 posts per client and 30 globally; listing allows 30 per client and 500
 globally. Local browsers share the local client limit. Live identity requires a
-trusted proxy, which is not configured yet.
+verified Firebase guest session in public mode; App Check is also required.
 
 Expiry prevents reads immediately; physical deletion is separate:
 
@@ -94,7 +94,7 @@ of up to 100 payloads. Repeat if needed. Scheduled cloud cleanup is not configur
 ## Checks
 
 ```sh
-pnpm check              # TypeScript, 24 unit/contract tests, production build
+pnpm check              # TypeScript, 31 unit/contract tests, production build
 pnpm test:supabase      # Real local database/Storage/Edge API + two browser flows
 pnpm format
 ```
@@ -117,11 +117,11 @@ Firebase emulators first, and never reset imported user data.
 
 ## Public deployment
 
-A localhost link does not work on another device. Supabase hosting the backend
-also does not publish the Vite website. Public rollout still needs the reviewed
-cloud migrations, Edge Function deployment, trusted hosting proxy, backend
-secrets, abuse controls, cleanup schedule, and two-device tests. Live mode remains
-gated off. Follow [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for the remaining work.
+The public setup is Firebase Hosting for the website and Supabase for data,
+files, and backend functions. The public build calls Supabase directly and uses
+Firebase guest Auth plus App Check. The code/configuration is prepared; provider
+setup, cloud deployment, scheduled cleanup, and two-device tests remain. Live mode
+stays gated off. Follow [PUBLIC_DEPLOYMENT.md](./PUBLIC_DEPLOYMENT.md).
 
 This project is separate from the expense tracker. Preserve history and the pnpm
 lockfile. Never commit keys, real user content, runtime files, or database exports.

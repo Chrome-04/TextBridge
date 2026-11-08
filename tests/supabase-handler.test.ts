@@ -243,15 +243,84 @@ test('Supabase: live remains disabled and local mode rejects a cloud URL', async
     assert.equal(f.calls.length, 0)
   }
 })
-test('Supabase: live requires matching proxy and origin', async () => {
+test('Supabase: live requires configured Firebase verification and matching origin', async () => {
   const f = fixture({
     local: false,
     liveEnabled: true,
-    proxySecret: 'test-proxy',
+    verifyClient: async () => null,
     origin: 'https://example.com',
   })
   assert.equal((await f.share()).status, 403)
   assert.equal(f.calls.length, 0)
+})
+test('Supabase: live CORS preflight allows Firebase headers and exposes binary metadata', async () => {
+  const f = fixture({
+    local: false,
+    liveEnabled: true,
+    origin: 'https://test.web.app',
+    verifyClient: async () => {
+      throw new Error('Preflight must not authenticate')
+    },
+  })
+  const result = await f.handler(
+    new Request('https://example.supabase.co/functions/v1/api/retrieve', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://test.web.app',
+        'Access-Control-Request-Method': 'POST',
+      },
+    }),
+  )
+  assert.equal(result.status, 204)
+  assert.equal(
+    result.headers.get('Access-Control-Allow-Origin'),
+    'https://test.web.app',
+  )
+  assert.match(
+    result.headers.get('Access-Control-Allow-Headers')!,
+    /Authorization, X-Firebase-AppCheck/,
+  )
+  assert.match(
+    result.headers.get('Access-Control-Expose-Headers')!,
+    /X-Share-Metadata/,
+  )
+  assert.equal(f.calls.length, 0)
+})
+test('Supabase: browser-origin spoofing and forwarded identity headers do not bypass verification', async () => {
+  const denied = fixture({
+    local: false,
+    liveEnabled: true,
+    origin: 'https://test.web.app',
+    verifyClient: async () => null,
+  })
+  assert.equal(
+    (
+      await denied.request('/comments/list', '{}', {
+        Origin: 'https://test.web.app',
+        'X-TextBridge-Client-IP': 'forged',
+      })
+    ).status,
+    403,
+  )
+  assert.equal(denied.calls.length, 0)
+  const valid = fixture({
+    local: false,
+    liveEnabled: true,
+    origin: 'https://test.web.app',
+    verifyClient: async () => 'firebase:verified-guest',
+  })
+  for (const address of ['first-fake', 'second-fake'])
+    assert.equal(
+      (
+        await valid.request('/comments/list', '{}', {
+          Origin: 'https://test.web.app',
+          'X-TextBridge-Client-IP': address,
+        })
+      ).status,
+      200,
+    )
+  const limits = valid.calls.filter((call) => call.name === 'tb_limit')
+  assert.equal(limits[0].input.p_client, limits[1].input.p_client)
 })
 test('Supabase: unexpected origins and unauthenticated cleanup are denied', async () => {
   const f = fixture()

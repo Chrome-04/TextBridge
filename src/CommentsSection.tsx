@@ -4,6 +4,7 @@ import {
   listComments,
   postComment,
   usingBackend,
+  isLive,
   type PublicComment,
 } from './share-client'
 
@@ -12,6 +13,10 @@ function errorMessage(error: unknown, posting: boolean) {
     return 'Too many requests. Wait a minute before trying again. Your draft is still here.'
   if (error instanceof ShareError && error.kind === 'invalid')
     return 'Use a nickname of 1–40 characters and a comment of 1–1,000 characters.'
+  if (isLive)
+    return posting
+      ? 'Could not confirm your comment was posted. Your draft is still here. Check Refresh comments before retrying.'
+      : 'Could not load comments. Try Refresh comments shortly.'
   return posting
     ? 'Could not confirm your comment was posted. Your draft is still here. Check Refresh comments before retrying, and keep the local backend running.'
     : 'Could not load comments. Keep the local backend running, then try Refresh comments.'
@@ -97,8 +102,9 @@ export default function CommentsSection() {
       ) : (
         <>
           <p className="local-note">
-            Local database comments · visible between browsers on this computer.
-            Nothing is published online yet.
+            {isLive
+              ? 'Public comments · visible to visitors on TextBridge.'
+              : 'Local database comments · visible between browsers on this computer. Nothing is published online yet.'}
           </p>
           <div className="comments-layout">
             <form

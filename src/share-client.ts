@@ -2,6 +2,7 @@ import { withDemoStore } from './indexed-store'
 import { ShareError, type SharedNote, type Duration } from './demo-store'
 
 export const usingBackend = import.meta.env.VITE_SHARE_MODE !== 'demo'
+export const isLive = import.meta.env.VITE_SHARE_STAGE === 'live'
 export const backendName =
   import.meta.env.VITE_SHARE_MODE === 'firebase' ? 'Firebase' : 'Supabase'
 type Store = {
@@ -14,8 +15,29 @@ async function request(path: string, init: RequestInit) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 60_000)
   try {
-    const response = await fetch(`/api${path}`, {
+    let endpoint = '/api'
+    const headers = new Headers(init.headers)
+    if (isLive) {
+      const url = new URL(import.meta.env.VITE_SUPABASE_FUNCTION_URL || '')
+      if (
+        url.protocol !== 'https:' ||
+        !url.hostname.endsWith('.supabase.co') ||
+        url.pathname !== '/functions/v1/api' ||
+        url.search ||
+        url.hash ||
+        url.username ||
+        url.password
+      )
+        throw new ShareError('network')
+      endpoint = url.href.replace(/\/$/, '')
+      const identity = await (await import('./live-client')).liveHeaders()
+      for (const [name, value] of Object.entries(identity))
+        headers.set(name, value)
+    }
+    if (controller.signal.aborted) throw new ShareError('network')
+    const response = await fetch(`${endpoint}${path}`, {
       ...init,
+      headers,
       cache: 'no-store',
       signal: controller.signal,
     })

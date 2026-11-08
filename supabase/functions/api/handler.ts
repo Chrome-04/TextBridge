@@ -33,7 +33,7 @@ type Settings = {
   local: boolean
   liveEnabled?: boolean
   origin?: string
-  proxySecret?: string
+  verifyClient?: (request: Request) => Promise<string | null>
   cleanupSecret?: string
   generateCode?: () => string
   fetch?: typeof fetch
@@ -178,12 +178,16 @@ export function createHandler(settings: Settings) {
       )
       if (settings.local && !localHost) throw new ApiError(503, 'unavailable')
       const origin = req.headers.get('origin')
+      const path = new URL(req.url).pathname.replace(/^.*\/api(?=\/|$)/, '')
       if (!settings.local) {
-        if (!settings.liveEnabled || !settings.proxySecret || !settings.origin)
+        if (!settings.liveEnabled || !settings.verifyClient || !settings.origin)
           throw new ApiError(503, 'unavailable')
+        const allowedOrigins = settings.origin
+          .split(',')
+          .map((value) => value.trim())
         if (
-          origin !== settings.origin ||
-          req.headers.get('X-TextBridge-Proxy') !== settings.proxySecret
+          path !== '/cleanup' &&
+          (!origin || !allowedOrigins.includes(origin))
         )
           throw new ApiError(403, 'forbidden')
       }
@@ -197,16 +201,19 @@ export function createHandler(settings: Settings) {
           throw new ApiError(403, 'forbidden')
         headers.set('Access-Control-Allow-Origin', origin)
         headers.set('Vary', 'Origin')
+        headers.set(
+          'Access-Control-Expose-Headers',
+          'X-Share-Metadata, Retry-After',
+        )
       }
       if (req.method === 'OPTIONS') {
         headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
         headers.set(
           'Access-Control-Allow-Headers',
-          'Content-Type, X-Share-Kind, X-Share-Name, X-Share-Duration',
+          'Content-Type, Authorization, X-Firebase-AppCheck, X-Share-Kind, X-Share-Name, X-Share-Duration',
         )
         return new Response(null, { status: 204, headers })
       }
-      const path = new URL(req.url).pathname.replace(/^.*\/api(?=\/|$)/, '')
       if (path === '/health' && req.method === 'GET')
         return json({
           mode: settings.local ? 'supabase-local' : 'supabase-live',
@@ -229,10 +236,10 @@ export function createHandler(settings: Settings) {
         }
         return json({ removed: items.length })
       }
-      // Only our authenticated hosting proxy supplies live client identity.
+      // CORS is not authentication: verify both Firebase tokens for live calls.
       const identity = settings.local
         ? 'local'
-        : req.headers.get('X-TextBridge-Client-IP')
+        : await settings.verifyClient!(req)
       if (!identity) throw new ApiError(403, 'forbidden')
       const client = await clientHash(identity)
       if (path === '/shares') {

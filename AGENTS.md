@@ -21,9 +21,10 @@
 ## Setup and verification
 - Supabase is the default and its real SQL/Storage/Edge tests pass. See
   `SUPABASE_SETUP.md`. The normal preview uses it; no cloud project has been
-  changed or publicly deployed. Keep live mode gated until trusted hosting routing,
-  backend secrets, abuse controls, cleanup scheduling, and production labels are
-  ready. Local Supabase uses its isolated launcher and a runtime path without spaces;
+  changed or publicly deployed. Public target is Firebase Hosting + Supabase direct HTTPS, without a separate
+  proxy. See PUBLIC_DEPLOYMENT.md. Firebase guest Auth and App Check are required
+  for live requests; keep it gated until provider setup, cloud deployment, cleanup
+  scheduling, and production checks are ready. Local Supabase uses its isolated launcher and a runtime path without spaces;
   `demo-textbridge` is for legacy Firebase commands only.
 - Run `pnpm supabase:start` and `pnpm dev`. `pnpm test:supabase` runs real local
   integration and desktop/mobile browser checks. Never reset normal user databases.
@@ -73,8 +74,9 @@
 
 ## Before live deployment (not authorized)
 - Live access is deliberately gated off. Configure and test public abuse controls,
-  backend rate salt, origin, scheduled cleanup, and trusted hosting proxy/IP identity
-  before enabling it. Legacy Firebase App Check does not protect the Supabase API.
+  backend rate salt, origin allowlist, and scheduled cleanup before enabling it.
+  Supabase verifies Firebase guest JWTs and App Check JWTs itself. Ignore client
+  forwarded/IP headers; rate limits use a hash of the verified guest ID.
 - Preserve atomic reservations, backend validation/rate limits, expiry checks,
   deny rules, and no-store responses. Large content stays in Storage.
 - Configure scheduled cleanup, orphan monitoring, deployment hosting rewrites,
@@ -88,3 +90,13 @@
   credentials, service-account keys, dependencies, builds, or emulator exports.
 - Target private GitHub repo: `text-share`. Use normal browser sign-in; never
   request passwords/tokens in chat or force-push over unknown remote history.
+
+## Public preparation checkpoint
+- Firebase TextBridge Web is registered; private pending config is ignored under
+  secrets/. No website/backend deployment or billing change has occurred.
+- firebase.hosting.json is the separate Hosting/Auth deployment config. Never
+  deploy legacy Firebase Functions/Firestore/Storage for the Supabase public app.
+- User's next setup: Firebase Anonymous Auth and App Check provider registration.
+  Real provider tokens, cloud cleanup, and two-device checks remain pending.
+- Public builds use npm run build:public, which rejects incomplete configuration.
+- 31 unit/contract tests + 8 real local backend tests + 2 browser flows pass.

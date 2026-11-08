@@ -7,7 +7,7 @@ and Edge Function**. The normal preview at http://127.0.0.1:5173 uses Supabase.
 The user's cloud project has not been modified or deployed, and the site is not
 public yet. Firebase emulator data remains separate and has not been reset.
 
-Verified: 24 unit/contract tests, 8 real database/Storage/Edge Function tests,
+Verified: 31 unit/contract tests, 8 real database/Storage/Edge Function tests,
 2 desktop/mobile browser flows, TypeScript, and the production build. A real
 19,999,999-byte file round-trips through the Edge Function. Private table and RPC
 permissions, concurrent reservations/rates, expiry, and cleanup are checked.
@@ -70,26 +70,15 @@ public tables or make the bucket public.
 
 ## Remaining public rollout
 
-The backend code deliberately rejects hosted URLs in local mode. Before enabling
-live traffic, finish the following separate deployment stage:
+The selected public setup is **Firebase Hosting + Supabase**, with direct HTTPS
+calls protected by Firebase guest Auth and App Check. A separate proxy or Cloudflare
+account is not required. See [PUBLIC_DEPLOYMENT.md](./PUBLIC_DEPLOYMENT.md) for
+current setup status, exact next console steps, and the deployment review.
 
-1. Sign into the user's Supabase account through normal browser/CLI login. Verify
-   the TextBridge project; never use the expense tracker project or credentials.
-2. Deploy both reviewed migrations and the API Edge Function to that project.
-3. Implement and deploy the frontend with a trusted same-origin hosting proxy.
-   The proxy must supply client identity and hold its secret outside browser code.
-   This proxy is not implemented yet; publishing static files alone is insufficient.
-4. Configure `TEXTBRIDGE_RATE_SALT`, `TEXTBRIDGE_PROXY_SECRET`,
-   `TEXTBRIDGE_CLEANUP_SECRET`, and `TEXTBRIDGE_ORIGIN` as backend secrets, and
-   configure the production environment separately from the local `.env`.
-5. Add public upload/comment abuse controls and scheduled cleanup with monitoring.
-   There is no malware scanner, moderation UI, or automated spam filter yet.
-6. Set the live-mode flag only after the proxy and protections are tested. Update
-   local-testing labels for the production build and test sharing on two devices.
-
-No public deployment or payment-account changes have been performed. No
-administrator keys are needed in chat. Local success does not claim that cloud
-production setup or public hosting is already finished.
+A Firebase web app named TextBridge Web has been registered and its public
+configuration saved privately. Anonymous Auth and App Check setup still need to
+be completed. The Supabase cloud project and public website are not deployed;
+live access remains disabled. No billing or expense-tracker changes have been made.
 
 References: [API keys](https://supabase.com/docs/guides/getting-started/api-keys),
 [Edge Function environment](https://supabase.com/docs/guides/functions/secrets),

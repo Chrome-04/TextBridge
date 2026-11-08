@@ -1,7 +1,12 @@
 import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
 import CommentsSection from './CommentsSection'
-import { withShareStore, usingBackend, backendName } from './share-client'
+import {
+  withShareStore,
+  usingBackend,
+  backendName,
+  isLive,
+} from './share-client'
 import {
   useEffect,
   useLayoutEffect,
@@ -255,12 +260,14 @@ function ModeTabs({
       <span
         className="prototype-badge"
         title={
-          usingBackend
-            ? `Local ${backendName} testing only. Sharing works between browsers on this computer while the app and local backend are running. Nothing is public online.`
-            : 'Local demo only. Sharing works in this browser and is not connected to a public server.'
+          isLive
+            ? 'Share between devices using an active code, link, or QR code.'
+            : usingBackend
+              ? `Local ${backendName} testing only. Sharing works between browsers on this computer while the app and local backend are running. Nothing is public online.`
+              : 'Local demo only. Sharing works in this browser and is not connected to a public server.'
         }
       >
-        <span /> {usingBackend ? 'Local test' : 'Demo'}
+        <span /> {isLive ? 'Online' : usingBackend ? 'Local test' : 'Demo'}
       </span>
     </div>
   )
@@ -479,9 +486,11 @@ function SendView({
           </button>
         </div>
         <p className="local-note">
-          {usingBackend
-            ? 'Local test only · share between browsers on this computer while the local backend is running.'
-            : 'Local demo only · sharing is stored in this browser and is not public yet.'}
+          {isLive
+            ? 'Share text or a file between devices. No sign-up needed.'
+            : usingBackend
+              ? 'Local test only · share between browsers on this computer while the local backend is running.'
+              : 'Local demo only · sharing is stored in this browser and is not public yet.'}
         </p>
       </form>
     </>
@@ -660,9 +669,11 @@ function GeneratedView({
             Use the code, open the link, or scan the QR code to reach Receive.
           </p>
           <small>
-            {usingBackend
-              ? 'Local test: open this link in Chrome or Safari on this computer. Phone sharing needs a reachable website address; 127.0.0.1 refers to each device itself.'
-              : 'Local demo: links work in this browser only. Scanning with a phone or opening in another browser cannot retrieve this item yet. A shared backend is still required.'}
+            {isLive
+              ? 'Open this link on the receiving device, or scan the QR code.'
+              : usingBackend
+                ? 'Local test: open this link in Chrome or Safari on this computer. Phone sharing needs a reachable website address; 127.0.0.1 refers to each device itself.'
+                : 'Local demo: links work in this browser only. Scanning with a phone or opening in another browser cannot retrieve this item yet. A shared backend is still required.'}
           </small>
         </div>
         <div className="result-footer">
@@ -913,9 +924,11 @@ function ReceiveView({
           View content <ArrowIcon />
         </button>
         <p className="local-note">
-          {usingBackend
-            ? 'Local test only · The local backend must stay running.'
-            : 'Local demo only · codes are not shared with other browsers yet.'}
+          {isLive
+            ? 'Enter a code from the sender, or open their sharing link.'
+            : usingBackend
+              ? 'Local test only · The local backend must stay running.'
+              : 'Local demo only · codes are not shared with other browsers yet.'}
         </p>
       </form>
     </>
@@ -1042,9 +1055,11 @@ const stateContent: Record<
   'not-found': {
     tag: 'Code unavailable',
     title: 'Code not found or expired.',
-    body: usingBackend
-      ? 'Check the code and expiry, or ask the sender for a new one. Codes from the old browser-only demo are not stored in this database.'
-      : 'Check the code and try again, or ask the sender for a new one. Demo codes only work in the browser where they were created.',
+    body: isLive
+      ? 'Check the code and expiry, or ask the sender for a new code.'
+      : usingBackend
+        ? 'Check the code and expiry, or ask the sender for a new one. Codes from the old browser-only demo are not stored in this database.'
+        : 'Check the code and try again, or ask the sender for a new one. Demo codes only work in the browser where they were created.',
   },
   invalid: {
     tag: 'Check your input',
@@ -1054,9 +1069,11 @@ const stateContent: Record<
   network: {
     tag: usingBackend ? 'Connection unavailable' : 'Demo connection error',
     title: 'The bridge is down.',
-    body: usingBackend
-      ? 'Could not reach the local backend. Keep it running, then try again. Your input is still here.'
-      : 'This is a simulated network error. Your input is still here. Try again when you are ready.',
+    body: isLive
+      ? 'Could not reach TextBridge. Try again shortly. Your input is still here.'
+      : usingBackend
+        ? 'Could not reach the local backend. Keep it running, then try again. Your input is still here.'
+        : 'This is a simulated network error. Your input is still here. Try again when you are ready.',
   },
   storage: {
     tag: 'Browser storage unavailable',
