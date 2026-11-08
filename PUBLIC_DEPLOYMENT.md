@@ -1,5 +1,7 @@
 # Firebase Hosting + Supabase public setup
 
+For commands and dashboard steps you can run yourself, see `MANUAL_DEPLOYMENT.md`.
+
 ## Current checkpoint
 
 The Firebase CLI and Supabase CLI sign-ins work, and the existing TextBridge
