@@ -1,5 +1,5 @@
 import { usingBackend, isLive } from './share-client'
-import { contactDetails } from './contact-details'
+import { contactDetails, techStack } from './contact-details'
 import AboutSection from './AboutSection'
 const steps = [
   {
@@ -158,6 +158,17 @@ export default function HelpSections() {
             </div>
           ))}
         </dl>
+        <div className="tech-stack" aria-labelledby="tech-stack-title">
+          <h3 id="tech-stack-title">Built with</h3>
+          <dl className="tech-stack-list">
+            {techStack.map(({ name, purpose }) => (
+              <div key={name}>
+                <dt>{name}</dt>
+                <dd>{purpose}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </section>
     </div>
   )

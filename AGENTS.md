@@ -1,6 +1,9 @@
 # TextBridge project instructions
 
 ## Scope
+- The user will deploy manually. Provide guidance; do not execute cloud deployment
+  unless the user explicitly asks the assistant to perform it. The earlier “let's
+  deploy” was clarified as a request for manual instructions.
 - This is TextBridge, separate from the expense tracker. Preserve the exported
   dark green design and reuse suitable React components.
 - Current stage: Supabase Postgres/private Storage/Edge Function verified locally.
@@ -50,7 +53,8 @@
   copy is in `src/about-story.ts`; preserve the user's informal Burmese voice.
 - `src/contact-details.ts`: owner-editable public contact details. Keep placeholders
   empty until the user fills them; do not invent personal details. Contact cards
-  display values only; email opens the visitor's email app.
+  display values only; email opens the visitor's email app. Its techStack list powers
+  the Contact section's “Built with” list and describes the actual project tools.
 - `src/CommentsSection.tsx`: public nickname/comment form and newest 20 comments.
   Backend-only: no simulated comment data or browser-storage fallback. Render
   comments as plain text. Keep drafts after failures and disclose public visibility.

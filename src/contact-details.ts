@@ -7,3 +7,13 @@ export const contactDetails = {
   email: '',
   viber: '',
 }
+
+// Public technology list below the contact cards. Edit the labels here if needed.
+export const techStack = [
+  { name: 'React', purpose: 'User interface' },
+  { name: 'TypeScript', purpose: 'Application code' },
+  { name: 'CSS / Tailwind CSS', purpose: 'Styling' },
+  { name: 'Vite', purpose: 'Development and builds' },
+  { name: 'Firebase', purpose: 'Hosting, guest sessions, and App Check' },
+  { name: 'Supabase', purpose: 'Database, file storage, and backend' },
+]

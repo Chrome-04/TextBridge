@@ -21,7 +21,8 @@ cd "/Users/khantpaing/WorkSpace/Git/Text_Share/TextBridge Sharing Prototype"
 ```
 
 Edit `src/contact-details.ts` if you want your public contact cards filled before
-publishing. Only edit the quoted values. Save the file.
+publishing. Only edit the quoted values. The same file's `techStack` list controls
+the “Built with” technologies shown below your contact cards. Save the file.
 
 Use the commands below one at a time. If one fails, stop at that step and share
 the error without passwords, secret values, or complete environment files.
