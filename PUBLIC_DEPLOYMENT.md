@@ -9,8 +9,13 @@ projects have been verified. A Firebase web app named **TextBridge Web** is now
 registered. Its public configuration and pending deployment settings are saved
 in ignored `secrets/` files. The expense tracker has not been changed.
 
-The website and Supabase backend have **not been deployed**. Live access remains
-disabled. The local preview still uses local Supabase and 5 minutes by default.
+The user manually deployed the website and Supabase backend on November 8. The
+live homepage returns HTTP 200; read-only cloud checks confirm the cleanup job is
+active and its recent requests return HTTP 200 with no expired/orphan backlog.
+No assistant cloud deployment or billing change occurred. The local preview still
+uses local Supabase and 5 minutes by default. Real browser-token and cross-device
+production verification remain pending. See SEARCH_SETUP.md for the prepared
+homepage indexing fix, which still needs the owner's manual redeployment.
 On November 8, Firebase Anonymous Auth and the saved reCAPTCHA Enterprise App Check
 provider were verified through the authenticated Firebase API. Both Hosting domains
 are authorized for Firebase Auth. The registered site key is saved privately in

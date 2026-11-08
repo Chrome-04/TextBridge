@@ -1,5 +1,8 @@
 # Deploy TextBridge yourself
 
+After publishing, follow `SEARCH_SETUP.md` to verify the site in Google Search
+Console and request homepage indexing. The search update must also be redeployed.
+
 These steps publish the prepared app. They have not been run by the assistant.
 Use only the existing TextBridge projects:
 

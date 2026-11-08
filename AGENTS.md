@@ -6,9 +6,9 @@
   deploy” was clarified as a request for manual instructions.
 - This is TextBridge, separate from the expense tracker. Preserve the exported
   dark green design and reuse suitable React components.
-- Current stage: Supabase Postgres/private Storage/Edge Function verified locally.
-  Default browser mode uses same-origin API calls to local Supabase. Keep the local-testing
-  notice. No deployment without the user's explicit request. Never touch the
+- Current stage: the user manually deployed Supabase and Firebase Hosting. The local
+  preview still uses same-origin API calls to local Supabase. Keep the local-testing
+  notice in that preview. No assistant deployment without the user's explicit request. Never touch the
   expense tracker. Local CLI commands must explicitly use demo-textbridge.
 - Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
   OR one file strictly under 20,000,000 bytes. No accounts, payments, passwords,
@@ -23,8 +23,8 @@
 
 ## Setup and verification
 - Supabase is the default and its real SQL/Storage/Edge tests pass. See
-  `SUPABASE_SETUP.md`. The normal preview uses it; no cloud project has been
-  changed or publicly deployed. Public target is Firebase Hosting + Supabase direct HTTPS, without a separate
+  `SUPABASE_SETUP.md`. The normal preview uses local Supabase. The user deployed the
+  public Firebase Hosting + Supabase direct HTTPS setup, without a separate
   proxy. See PUBLIC_DEPLOYMENT.md. Firebase guest Auth and App Check are required
   for live requests; keep it gated until provider setup, cloud deployment, cleanup
   scheduling, and production checks are ready. Local Supabase uses its isolated launcher and a runtime path without spaces;
@@ -79,8 +79,8 @@
 - `vite.config.ts`: local tooling. `.figma/` is inactive export provenance.
 - `tests/demo-store.test.ts`: data behavior; `tests/browser/`: user flows.
 
-## Before live deployment (not authorized)
-- Live access is deliberately gated off. Configure and test public abuse controls,
+## Before future live deployments (owner handles publication)
+- Live access is enabled in the user's cloud backend; retain its access gate. Configure and test public abuse controls,
   backend rate salt, origin allowlist, and scheduled cleanup before enabling it.
   Supabase verifies Firebase guest JWTs and App Check JWTs itself. Ignore client
   forwarded/IP headers; rate limits use a hash of the verified guest ID.
@@ -100,17 +100,23 @@
 
 ## Public preparation checkpoint
 - Firebase TextBridge Web is registered; private pending config is ignored under
-  secrets/. No website/backend deployment or billing change has occurred.
+  secrets/. The user manually deployed the website/backend; no assistant deployment
+  or billing change has occurred. The live homepage returns HTTP 200.
 - firebase.hosting.json is the separate Hosting/Auth deployment config. Never
   deploy legacy Firebase Functions/Firestore/Storage for the Supabase public app.
 - Firebase Anonymous Auth and the saved reCAPTCHA Enterprise App Check provider
   have been verified. Ignored .env.production.local is complete and the real public
   build passes. Real provider token exchanges, cloud cleanup, and two-device checks
-  remain pending until authorized deployment.
+  remain pending for production verification.
 - supabase/deployment/cleanup.sql prepares a one-minute Vault-backed cleanup job;
   cleanup-status.sql checks HTTP responses and backlog. The real local extensions
-  passed scripts/check-cleanup-local.mjs in a rolled-back transaction. No cloud
-  schedule or website/backend has been deployed. Store Vault values privately
+  passed scripts/check-cleanup-local.mjs in a rolled-back transaction. The user installed
+  the cloud schedule; read-only checks confirmed active=true, recent HTTP 200, and
+  no expired/orphan backlog. Store Vault values privately
   using bound parameters, never inline tracked SQL or browser configuration.
 - Public builds use npm run build:public, which rejects incomplete configuration.
+- `SEARCH_SETUP.md` describes the owner's manual Search Console verification and
+  redeploy steps. The homepage is indexable in source; Firebase Hosting must keep
+  `/receive` and `/receive/**` noindex through response headers. Only the homepage
+  belongs in public/sitemap.xml. These SEO changes require the owner's redeploy.
 - 31 unit/contract tests + 8 real local backend tests + 2 browser flows pass.

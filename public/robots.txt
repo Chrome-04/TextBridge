@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://textbridge-8c8a4.web.app/sitemap.xml
