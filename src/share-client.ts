@@ -124,7 +124,7 @@ export type PublicComment = {
   comment: string
   createdAt: number
 }
-async function commentsRequest<T>(path: string, body: object): Promise<T> {
+async function jsonRequest<T>(path: string, body: object): Promise<T> {
   const { body: result } = await request(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -137,6 +137,20 @@ async function commentsRequest<T>(path: string, body: object): Promise<T> {
   }
 }
 export const listComments = () =>
-  commentsRequest<{ comments: PublicComment[] }>('/comments/list', {})
+  jsonRequest<{ comments: PublicComment[] }>('/comments/list', {})
 export const postComment = (nickname: string, comment: string) =>
-  commentsRequest<PublicComment>('/comments', { nickname, comment })
+  jsonRequest<PublicComment>('/comments', { nickname, comment })
+
+export type ShareStats = { totalShares: string; startedAt: string }
+export async function getShareStats(): Promise<ShareStats> {
+  const stats = await jsonRequest<ShareStats>('/stats', {})
+  if (
+    !stats ||
+    typeof stats.totalShares !== 'string' ||
+    !/^\d{1,19}$/.test(stats.totalShares) ||
+    typeof stats.startedAt !== 'string' ||
+    !Number.isFinite(Date.parse(stats.startedAt))
+  )
+    throw new ShareError('network')
+  return stats
+}

@@ -1,6 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
 import CommentsSection from './CommentsSection'
+import ShareCount from './ShareCount'
 import {
   withShareStore,
   usingBackend,
@@ -1183,6 +1184,7 @@ export default function App() {
   const [code, setCode] = useState(codeFromLocation)
   const [failure, setFailure] = useState<Failure>('not-found')
   const [simulation, setSimulation] = useState<Simulation>('normal')
+  const [shareCountVersion, setShareCountVersion] = useState(0)
   const request = useRef(0)
   const mainRef = useRef<HTMLElement>(null)
 
@@ -1269,6 +1271,7 @@ export default function App() {
       setNote(result)
       setView(operation === 'send' ? 'generated' : 'received')
       if (operation === 'send') {
+        setShareCountVersion((value) => value + 1)
         setText('')
         setFile(null)
       }
@@ -1368,6 +1371,9 @@ export default function App() {
             />
           )}
         </section>
+        {usingBackend && backendName === 'Supabase' && (
+          <ShareCount refreshVersion={shareCountVersion} />
+        )}
         <p className="privacy-note">
           Anyone with an active code or link can access its content until it
           expires.

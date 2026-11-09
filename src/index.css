@@ -828,6 +828,51 @@ select:focus-visible {
   color: #c1facb;
 }
 
+.share-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 20px auto 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.share-count p {
+  margin: 0;
+}
+
+.share-count strong {
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.share-count-refresh {
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.share-count-refresh:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.share-count-refresh:disabled {
+  cursor: default;
+  text-decoration: none;
+}
+
 .privacy-note {
   margin: 18px 0 0;
   color: var(--faint);

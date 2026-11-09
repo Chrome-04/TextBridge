@@ -39,6 +39,11 @@ for disk space before starting; runtime downloads and data need additional room.
 
 ## Sharing and comments
 
+The successful-share counter sits below the sharing tool. It counts text and file
+shares once they become ready and keeps the total after expiry. Tracking begins
+when the new migration is installed; older deleted shares cannot be reconstructed.
+See [SHARE_COUNT_SETUP.md](./SHARE_COUNT_SETUP.md) for the manual cloud update.
+
 - Text: up to 100,000 whitespace-separated words and 20 MiB UTF-8.
 - Files: one file strictly under 20,000,000 bytes; download only.
 - New codes last **5 or 10 minutes**, with **5 minutes selected by default**.

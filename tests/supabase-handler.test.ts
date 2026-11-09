@@ -47,6 +47,11 @@ function fixture(options: Record<string, unknown> = {}) {
         return Response.json(comment)
       }
       if (name === 'tb_comments') return Response.json(comments)
+      if (name === 'tb_share_stats')
+        return Response.json({
+          totalShares: '9007199254740993',
+          startedAt: '2026-11-09T00:00:00.000Z',
+        })
       throw new Error('Unexpected RPC')
     }
     assert.match(
@@ -344,4 +349,55 @@ test('Supabase: upstream failures return a generic response', async () => {
   const result = await f.share()
   assert.equal(result.status, 503)
   assert.deepEqual(await result.json(), { error: 'unavailable' })
+})
+
+test('Supabase: share statistics expose only an exact total and start time', async () => {
+  const f = fixture()
+  const result = await f.request('/stats')
+  assert.equal(result.status, 200)
+  assert.match(result.headers.get('cache-control')!, /no-store/)
+  assert.deepEqual(await result.json(), {
+    totalShares: '9007199254740993',
+    startedAt: '2026-11-09T00:00:00.000Z',
+  })
+  assert.deepEqual(
+    f.calls.map((call) => call.name),
+    ['tb_limit', 'tb_share_stats'],
+  )
+  assert.equal(f.calls[0].input.p_action, 'stats')
+})
+
+test('Supabase: share statistics require verified guests and their own rate allowance', async () => {
+  const denied = fixture({
+    local: false,
+    liveEnabled: true,
+    origin: 'https://test.web.app',
+    verifyClient: async () => null,
+  })
+  assert.equal(
+    (await denied.request('/stats', '{}', { Origin: 'https://test.web.app' }))
+      .status,
+    403,
+  )
+  assert.equal(denied.calls.length, 0)
+  const limited = fixture()
+  limited.deny()
+  const result = await limited.request('/stats')
+  assert.equal(result.status, 429)
+  assert.equal(result.headers.get('Retry-After'), '60')
+  assert.equal(
+    limited.calls.some((call) => call.name === 'tb_share_stats'),
+    false,
+  )
+})
+
+test('Supabase: share statistics cannot accept client supplied totals', async () => {
+  for (const body of ['null', '[]', '{"totalShares":"9999"}']) {
+    const f = fixture()
+    assert.equal((await f.request('/stats', body)).status, 400)
+    assert.equal(
+      f.calls.some((call) => call.name === 'tb_share_stats'),
+      false,
+    )
+  }
 })

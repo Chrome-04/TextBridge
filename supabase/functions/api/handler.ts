@@ -242,6 +242,18 @@ export function createHandler(settings: Settings) {
         : await settings.verifyClient!(req)
       if (!identity) throw new ApiError(403, 'forbidden')
       const client = await clientHash(identity)
+      if (path === '/stats') {
+        await limit(client, 'stats')
+        const input = await jsonBody(req, 256)
+        if (
+          !input ||
+          typeof input !== 'object' ||
+          Array.isArray(input) ||
+          Object.keys(input).length
+        )
+          throw new ApiError(400, 'invalid')
+        return json(await rpc('tb_share_stats'))
+      }
       if (path === '/shares') {
         await limit(client, 'create')
         const body = await readBody(req, 20 * 1024 * 1024)

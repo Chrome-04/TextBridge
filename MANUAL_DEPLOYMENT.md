@@ -1,5 +1,8 @@
 # Deploy TextBridge yourself
 
+For the successful-share counter update on an existing deployment, follow
+`SHARE_COUNT_SETUP.md` in migration, API, then Hosting order.
+
 After publishing, follow `SEARCH_SETUP.md` to verify the site in Google Search
 Console and request homepage indexing. The search update must also be redeployed.
 

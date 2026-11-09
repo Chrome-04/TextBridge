@@ -58,6 +58,12 @@
 - `src/CommentsSection.tsx`: public nickname/comment form and newest 20 comments.
   Backend-only: no simulated comment data or browser-storage fallback. Render
   comments as plain text. Keep drafts after failures and disclose public visibility.
+- `src/ShareCount.tsx`: compact successful-share total below the tool and above
+  the privacy message. Supabase-only, backend sourced, with a tracking start date.
+  Count the pending-to-ready transition once; retain totals after expiry/cleanup.
+  Never backfill deleted historical shares or use browser storage for the count.
+  `SHARE_COUNT_SETUP.md` documents the owner's migration/API/Hosting update.
+  `npm run test:share-count` checks the local database in a rolled-back transaction.
 - `functions/comments.js`: server validation (nickname 40, comment 1,000 characters),
   server timestamps, and atomic posting/list limits. Direct database access stays
   denied. Comments persist independently of sharing expiry. No moderation UI yet.
