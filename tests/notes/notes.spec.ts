@@ -2,9 +2,6 @@ import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { randomUUID } from 'node:crypto'
 
-// @ts-expect-error Node-only emulator helper has no declaration file.
-import { verifyEmulatorEmail } from '../notes-auth-helpers.mjs'
-
 test.use({ actionTimeout: 20_000 })
 const password = 'TextBridge-test-923!'
 const accounts: { uid: string; token: string }[] = []
@@ -23,11 +20,6 @@ async function signUp(page: Page, email: string) {
   await dialog
     .getByRole('button', { name: 'Create account', exact: true })
     .click()
-  await expect(
-    dialog.getByRole('heading', { name: 'Verify your email.' }),
-  ).toBeVisible()
-  await verifyEmulatorEmail(email)
-  await dialog.getByRole('button', { name: 'I verified my email' }).click()
   await expect(dialog).not.toBeVisible()
   const account = await page.evaluate(async () => {
     const module = await import('/src/firebase-session.ts' /* @vite-ignore */)
@@ -398,14 +390,14 @@ test('20 slots, draft preservation, edit/share at cap and delete to free a slot'
   )
 })
 
-test('email verification, resend, password reset and cancelled provider popup preserve the draft', async ({
+test('immediate email signup, password reset and cancelled provider popup preserve the draft', async ({
   page,
 }, info) => {
-  const email = `verify-${randomUUID()}@textbridge.invalid`
+  const email = `instant-${randomUUID()}@textbridge.invalid`
   await page.goto('/')
   await page
     .getByLabel('Text or link', { exact: true })
-    .fill('Keep this while I verify')
+    .fill('Keep this while I sign up')
   await page.getByRole('button', { name: 'Save to Notes', exact: true }).click()
   let dialog = page.getByRole('dialog')
   for (const name of ['Google', 'Apple'])
@@ -420,7 +412,7 @@ test('email verification, resend, password reset and cancelled provider popup pr
     timeout: 20_000,
   })
   await expect(page.getByLabel('Text or link', { exact: true })).toHaveValue(
-    'Keep this while I verify',
+    'Keep this while I sign up',
   )
   await page.screenshot({
     path: `artifacts/account-options-${info.project.name}.png`,
@@ -435,29 +427,33 @@ test('email verification, resend, password reset and cancelled provider popup pr
   await dialog
     .getByRole('button', { name: 'Create account', exact: true })
     .click()
-  await expect(
-    dialog.getByRole('heading', { name: 'Verify your email.' }),
-  ).toBeVisible()
-  // Register the account before assertions so cleanup also runs on failures.
-  accounts.push(
-    await page.evaluate(async () => {
-      const { firebaseSession } = await import(
-        '/src/firebase-session.ts' /* @vite-ignore */
-      )
-      const user = firebaseSession().auth.currentUser!
-      return { uid: user.uid, token: await user.getIdToken() }
-    }),
-  )
-  await expect(dialog.getByRole('button', { name: /Resend in/ })).toBeDisabled()
-  await dialog.getByRole('button', { name: 'I verified my email' }).click()
-  await expect(dialog.getByRole('status')).toContainText('not verified yet')
-  await expect(page.locator('.notes-toast')).not.toBeVisible()
-  await verifyEmulatorEmail(email)
-  await dialog.getByRole('button', { name: 'I verified my email' }).click()
   await expect(dialog).not.toBeVisible()
+  const account = await page.evaluate(async () => {
+    const { firebaseSession } = await import(
+      '/src/firebase-session.ts' /* @vite-ignore */
+    )
+    const user = firebaseSession().auth.currentUser!
+    return {
+      uid: user.uid,
+      token: await user.getIdToken(),
+      emailVerified: user.emailVerified,
+    }
+  })
+  accounts.push(account)
+  expect(account.emailVerified).toBe(false)
   await expect(page.locator('.notes-toast')).toContainText(
     'Saved to your private notes.',
   )
+  const codes = await fetch(
+    'http://127.0.0.1:9099/emulator/v1/projects/demo-textbridge/oobCodes',
+  )
+  const { oobCodes: sentCodes = [] } = await codes.json()
+  expect(
+    sentCodes.filter(
+      (item: { email: string; requestType: string }) =>
+        item.email === email && item.requestType === 'VERIFY_EMAIL',
+    ),
+  ).toEqual([])
   await logOut(page)
   await page.getByRole('button', { name: 'Save to Notes', exact: true }).click()
   dialog = page.getByRole('dialog')

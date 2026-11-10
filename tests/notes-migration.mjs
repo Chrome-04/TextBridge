@@ -9,8 +9,6 @@ import {
   getAuth,
   connectAuthEmulator,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
-  reload,
   deleteUser,
 } from 'firebase/auth'
 import {
@@ -23,7 +21,6 @@ import {
   serverTimestamp,
   terminate,
 } from 'firebase/firestore'
-import { verifyEmulatorEmail } from './notes-auth-helpers.mjs'
 const require = createRequire(
   new URL('../functions/package.json', import.meta.url),
 )
@@ -58,10 +55,6 @@ test(
     const parent = dbAdmin.doc(`users/${user.uid}`)
     const state = parent.collection('noteState').doc('quota')
     try {
-      await sendEmailVerification(user)
-      await verifyEmulatorEmail(user.email)
-      await reload(user)
-      await user.getIdToken(true)
       const batch = dbAdmin.batch()
       for (let i = 0; i < 27; i++)
         batch.set(parent.collection('notes').doc(`legacy-${i}`), {

@@ -13,7 +13,7 @@
   expense tracker. Local CLI commands must explicitly use demo-textbridge.
 - Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
   OR one file strictly under 20,000,000 bytes. Guest sharing needs no account.
-  The user approved optional Firebase Google/Apple and verified email/password accounts and private Firestore
+  The user approved optional Firebase Google/Apple and email/password accounts and private Firestore
   Saved notes. No payments, 24-hour option, or one-time reads. Download files;
   never embed active content. No Clipboard feature.
 - Generate a code, same-origin /receive#CODE link, and locally rendered QR code.
@@ -177,9 +177,11 @@
 
 ## Account providers and note-cap update (November 10)
 
-- Saved notes require a verified password/Google identity or Apple-authenticated
-  owner. Email signup sends verification, with resend and explicit refreshed-token
-  confirmation. Forgot password uses Firebase email action links. Google/Apple
+- Saved notes require a password, Google, or Apple-authenticated owner. At the
+  user's explicit request, email/password signup signs in immediately: no email
+  verification message, link, UI gate, or email_verified rule requirement.
+  Keep valid-email-format and password checks. Forgot password still uses Firebase
+  email action links and needs an accessible inbox. Google/Apple
   use popups so unsaved source text stays on screen; no account merging is added.
 - `AUTH_SETUP.md` documents manual Firebase Google/email and Apple Developer
   configuration. Real provider consent, Apple relay, inbox delivery, and Safari
@@ -195,7 +197,18 @@
 - `functions/migrate-note-quota.mjs` is an owner-run CLI, never imported by cloud
   Functions or the browser. `--uid` scopes an individual account for local tests.
   Local commands must target `demo-textbridge`; cloud credentials never enter VITE.
-- Local Auth/Firestore checks cover verified providers, 20-slot races, bypass
-  attempts, deletion/refill, and legacy migration. Browser tests cover verification,
+- Local Auth/Firestore checks cover registered providers, 20-slot races, bypass
+  attempts, deletion/refill, and legacy migration. Browser tests cover immediate unverified-email signup,
   password-reset completion, cancelled/full provider popups, counters, and draft
   preservation across desktop/mobile/320px. Follow setup guides before publishing.
+
+## Immediate email signup (November 10)
+
+- User explicitly removed email verification. Any valid-format email accepted by
+  Firebase can create an account and open Saved notes immediately, even if its
+  inbox is inaccessible. Keep Forgot password; explain it needs inbox access.
+- Remove the verification flow from both UI and Firestore rules (including the
+  maintenance rules), never just hide the screen. Existing unverified accounts
+  remain usable. Owner-only paths, provider restrictions, and 20-slot quota stay.
+- This change still needs the owner's manual Firestore rules and Hosting redeploy
+  for the live website. Do not enable cloud providers or deploy automatically.

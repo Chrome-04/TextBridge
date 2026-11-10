@@ -8,8 +8,6 @@ import {
 } from 'react'
 import {
   onIdTokenChanged,
-  sendEmailVerification,
-  reload,
   signInWithPopup,
   GoogleAuthProvider,
   OAuthProvider,
@@ -94,26 +92,13 @@ function AccountDialog({
   saving: boolean
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [mode, setMode] = useState<'login' | 'signup' | 'reset' | 'verify'>(
-    () => {
-      const current = firebaseSession().auth.currentUser
-      return current && !current.isAnonymous && !canUseNotes(current)
-        ? 'verify'
-        : 'login'
-    },
-  )
+  const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const [resendAt, setResendAt] = useState(0)
-  const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
   useEffect(() => {
     const element = dialog.current!
     element.showModal()
@@ -125,17 +110,6 @@ function AccountDialog({
     setMessage('')
     setPassword('')
     setConfirm('')
-  }
-  async function sendVerification() {
-    const current = firebaseSession().auth.currentUser
-    if (!current || current.isAnonymous) throw new Error('Sign in again first.')
-    await sendEmailVerification(current)
-    setResendAt(Date.now() + 60_000)
-    setMessage(
-      notesAreLocal
-        ? 'Verification link generated in the emulator terminal. No real email is sent in local testing.'
-        : 'Verification email sent. Open the link in your inbox, then choose “I verified my email”. Check spam too.',
-    )
   }
   async function social(provider: 'google' | 'apple') {
     if (busy) return
@@ -158,11 +132,7 @@ function AccountDialog({
       const credential = await withAuthOperation(() =>
         signInWithPopup(auth, oauth),
       )
-      if (canUseNotes(credential.user)) onComplete(credential.user)
-      else {
-        setMode('verify')
-        await sendVerification()
-      }
+      onComplete(credential.user)
     } catch (failure) {
       setError(authError(failure))
     } finally {
@@ -192,13 +162,11 @@ function AccountDialog({
         </button>
       </div>
       <h2 id="account-title">
-        {mode === 'verify'
-          ? 'Verify your email.'
-          : mode === 'signup'
-            ? 'Create your account.'
-            : mode === 'reset'
-              ? 'Reset your password.'
-              : 'Welcome back.'}
+        {mode === 'signup'
+          ? 'Create your account.'
+          : mode === 'reset'
+            ? 'Reset your password.'
+            : 'Welcome back.'}
       </h2>
       <p className="muted">
         {saving
@@ -210,75 +178,138 @@ function AccountDialog({
           Local test accounts only · Firebase emulators
         </p>
       )}
-      {mode === 'verify' ? (
-        <div className="account-verification">
-          <p>
-            Verify <strong>{firebaseSession().auth.currentUser?.email}</strong>{' '}
-            to open your private notes. Your text will stay here while you check
-            your inbox.
-          </p>
-          <button
-            className="primary-button"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true)
-              setError('')
-              setMessage('')
-              try {
-                const current = firebaseSession().auth.currentUser
-                if (!current) throw new Error('Please log in again.')
-                await reload(current)
-                await current.getIdToken(true)
-                if (canUseNotes(current)) onComplete(current)
-                else
-                  setMessage(
-                    'Your email is not verified yet. Open the verification link, then try again.',
-                  )
-              } catch (failure) {
-                setError(authError(failure))
-              } finally {
-                setBusy(false)
-              }
-            }}
-          >
-            I verified my email
-          </button>
-          <button
-            className="secondary-button"
-            disabled={busy || now < resendAt}
-            onClick={async () => {
-              setBusy(true)
-              setError('')
-              try {
-                await sendVerification()
-              } catch (failure) {
-                setError(authError(failure))
-              } finally {
-                setBusy(false)
-              }
-            }}
-          >
-            {now < resendAt
-              ? `Resend in ${Math.ceil((resendAt - now) / 1000)}s`
-              : 'Resend verification email'}
-          </button>
-          <button
-            className="text-button"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true)
-              try {
-                await withAuthOperation(() => signOut(firebaseSession().auth))
-                switchMode('login')
-              } catch (failure) {
-                setError(authError(failure))
-              } finally {
-                setBusy(false)
-              }
-            }}
-          >
-            Use another account
-          </button>
+      {mode !== 'reset' && (
+        <>
+          <div className="account-social" aria-label="Sign-in options">
+            <button
+              type="button"
+              className="secondary-button provider-google"
+              disabled={busy}
+              onClick={() => void social('google')}
+            >
+              <span className="provider-logo" aria-hidden="true">
+                <img src="/icons/google.png" width="40" height="40" alt="" />
+              </span>
+              <span>Continue with Google</span>
+            </button>
+            <button
+              type="button"
+              className="secondary-button provider-apple"
+              disabled={busy}
+              onClick={() => void social('apple')}
+            >
+              <span className="provider-logo" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  focusable="false"
+                >
+                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.46 7.59 9 7.31c1.35.07 2.29.77 3.08.82 1.18-.24 2.31-.96 3.57-.87 1.51.12 2.64.72 3.39 1.8-3.11 1.87-2.37 5.98.48 7.13-.57 1.5-1.31 2.99-2.48 4.1l.01-.01ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z" />
+                </svg>
+              </span>
+              <span>Continue with Apple</span>
+            </button>
+          </div>
+          <p className="account-divider">or use your email</p>
+        </>
+      )}
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault()
+          setError('')
+          setMessage('')
+          if (mode === 'signup' && password !== confirm) {
+            setError('The passwords do not match.')
+            return
+          }
+          setBusy(true)
+          try {
+            const { auth } = firebaseSession()
+            await auth.authStateReady()
+            if (mode === 'reset') {
+              await sendPasswordResetEmail(auth, email.trim())
+              setMessage(
+                notesAreLocal
+                  ? 'Password reset link generated in the emulator terminal. No real email is sent in local testing.'
+                  : 'If this email has an account, a reset link will arrive shortly. Check your spam folder too.',
+              )
+            } else {
+              const credential = await withAuthOperation(() =>
+                mode === 'signup'
+                  ? createUserWithEmailAndPassword(auth, email.trim(), password)
+                  : signInWithEmailAndPassword(auth, email.trim(), password),
+              )
+              setPassword('')
+              setConfirm('')
+              onComplete(credential.user)
+            }
+          } catch (failure) {
+            if (
+              mode === 'reset' &&
+              (failure as { code?: string })?.code === 'auth/user-not-found'
+            )
+              setMessage(
+                'If this email has an account, a reset link will arrive shortly. Check your spam folder too.',
+              )
+            else setError(authError(failure))
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        <fieldset disabled={busy}>
+          <label htmlFor="account-email">Email</label>
+          <input
+            id="account-email"
+            type="email"
+            autoComplete="email"
+            required
+            maxLength={254}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoFocus
+          />
+          {mode !== 'reset' && (
+            <>
+              <label htmlFor="account-password">Password</label>
+              <input
+                id="account-password"
+                type="password"
+                autoComplete={
+                  mode === 'signup' ? 'new-password' : 'current-password'
+                }
+                required
+                minLength={mode === 'signup' ? 8 : undefined}
+                maxLength={128}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                aria-describedby={
+                  mode === 'signup' ? 'password-hint' : undefined
+                }
+              />
+              {mode === 'signup' && (
+                <>
+                  <p className="size-hint" id="password-hint">
+                    At least 8 characters. Use a password you don’t use
+                    elsewhere.
+                  </p>
+                  <label htmlFor="account-confirm">Confirm password</label>
+                  <input
+                    id="account-confirm"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    maxLength={128}
+                    value={confirm}
+                    onChange={(event) => setConfirm(event.target.value)}
+                  />
+                </>
+              )}
+            </>
+          )}
           {error && (
             <p className="field-error" role="alert">
               {error}
@@ -289,210 +320,46 @@ function AccountDialog({
               {message}
             </p>
           )}
-        </div>
-      ) : (
-        <>
-          {mode !== 'reset' && (
-            <>
-              <div className="account-social" aria-label="Sign-in options">
-                <button
-                  type="button"
-                  className="secondary-button provider-google"
-                  disabled={busy}
-                  onClick={() => void social('google')}
-                >
-                  <span className="provider-logo" aria-hidden="true">
-                    <img
-                      src="/icons/google.png"
-                      width="40"
-                      height="40"
-                      alt=""
-                    />
-                  </span>
-                  <span>Continue with Google</span>
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button provider-apple"
-                  disabled={busy}
-                  onClick={() => void social('apple')}
-                >
-                  <span className="provider-logo" aria-hidden="true">
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="20"
-                      height="20"
-                      fill="currentColor"
-                      focusable="false"
-                    >
-                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.46 7.59 9 7.31c1.35.07 2.29.77 3.08.82 1.18-.24 2.31-.96 3.57-.87 1.51.12 2.64.72 3.39 1.8-3.11 1.87-2.37 5.98.48 7.13-.57 1.5-1.31 2.99-2.48 4.1l.01-.01ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z" />
-                    </svg>
-                  </span>
-                  <span>Continue with Apple</span>
-                </button>
-              </div>
-              <p className="account-divider">or use your email</p>
-            </>
-          )}
-          <form
-            onSubmit={async (event) => {
-              event.preventDefault()
-              setError('')
-              setMessage('')
-              if (mode === 'signup' && password !== confirm) {
-                setError('The passwords do not match.')
-                return
-              }
-              setBusy(true)
-              try {
-                const { auth } = firebaseSession()
-                await auth.authStateReady()
-                if (mode === 'reset') {
-                  await sendPasswordResetEmail(auth, email.trim())
-                  setMessage(
-                    notesAreLocal
-                      ? 'Password reset link generated in the emulator terminal. No real email is sent in local testing.'
-                      : 'If this email has an account, a reset link will arrive shortly. Check your spam folder too.',
-                  )
-                } else {
-                  const credential = await withAuthOperation(() =>
-                    mode === 'signup'
-                      ? createUserWithEmailAndPassword(
-                          auth,
-                          email.trim(),
-                          password,
-                        )
-                      : signInWithEmailAndPassword(
-                          auth,
-                          email.trim(),
-                          password,
-                        ),
-                  )
-                  setPassword('')
-                  setConfirm('')
-                  if (canUseNotes(credential.user)) onComplete(credential.user)
-                  else {
-                    setMode('verify')
-                    if (mode === 'signup') await sendVerification()
-                  }
-                }
-              } catch (failure) {
-                if (
-                  mode === 'reset' &&
-                  (failure as { code?: string })?.code === 'auth/user-not-found'
-                )
-                  setMessage(
-                    'If this email has an account, a reset link will arrive shortly. Check your spam folder too.',
-                  )
-                else setError(authError(failure))
-              } finally {
-                setBusy(false)
-              }
-            }}
+          <button className="primary-button" type="submit">
+            {busy
+              ? 'Please wait…'
+              : mode === 'signup'
+                ? 'Create account'
+                : mode === 'reset'
+                  ? 'Send reset link'
+                  : 'Log in'}
+          </button>
+        </fieldset>
+      </form>
+      <div className="account-switch">
+        <button
+          className="text-button"
+          disabled={busy}
+          onClick={() => switchMode(mode === 'signup' ? 'login' : 'signup')}
+        >
+          {mode === 'signup'
+            ? 'Already have an account? Log in'
+            : 'New here? Create an account'}
+        </button>
+        {mode !== 'reset' && (
+          <button
+            className="text-button"
+            disabled={busy}
+            onClick={() => switchMode('reset')}
           >
-            <fieldset disabled={busy}>
-              <label htmlFor="account-email">Email</label>
-              <input
-                id="account-email"
-                type="email"
-                autoComplete="email"
-                required
-                maxLength={254}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                autoFocus
-              />
-              {mode !== 'reset' && (
-                <>
-                  <label htmlFor="account-password">Password</label>
-                  <input
-                    id="account-password"
-                    type="password"
-                    autoComplete={
-                      mode === 'signup' ? 'new-password' : 'current-password'
-                    }
-                    required
-                    minLength={mode === 'signup' ? 8 : undefined}
-                    maxLength={128}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    aria-describedby={
-                      mode === 'signup' ? 'password-hint' : undefined
-                    }
-                  />
-                  {mode === 'signup' && (
-                    <>
-                      <p className="size-hint" id="password-hint">
-                        At least 8 characters. Use a password you don’t use
-                        elsewhere.
-                      </p>
-                      <label htmlFor="account-confirm">Confirm password</label>
-                      <input
-                        id="account-confirm"
-                        type="password"
-                        autoComplete="new-password"
-                        required
-                        minLength={8}
-                        maxLength={128}
-                        value={confirm}
-                        onChange={(event) => setConfirm(event.target.value)}
-                      />
-                    </>
-                  )}
-                </>
-              )}
-              {error && (
-                <p className="field-error" role="alert">
-                  {error}
-                </p>
-              )}
-              {message && (
-                <p className="notes-message" role="status">
-                  {message}
-                </p>
-              )}
-              <button className="primary-button" type="submit">
-                {busy
-                  ? 'Please wait…'
-                  : mode === 'signup'
-                    ? 'Create account'
-                    : mode === 'reset'
-                      ? 'Send reset link'
-                      : 'Log in'}
-              </button>
-            </fieldset>
-          </form>
-          <div className="account-switch">
-            <button
-              className="text-button"
-              disabled={busy}
-              onClick={() => switchMode(mode === 'signup' ? 'login' : 'signup')}
-            >
-              {mode === 'signup'
-                ? 'Already have an account? Log in'
-                : 'New here? Create an account'}
-            </button>
-            {mode !== 'reset' && (
-              <button
-                className="text-button"
-                disabled={busy}
-                onClick={() => switchMode('reset')}
-              >
-                Forgot password?
-              </button>
-            )}
-            {mode === 'reset' && (
-              <button
-                className="text-button"
-                disabled={busy}
-                onClick={() => switchMode('login')}
-              >
-                Back to log in
-              </button>
-            )}
-          </div>
-        </>
-      )}
+            Forgot password?
+          </button>
+        )}
+        {mode === 'reset' && (
+          <button
+            className="text-button"
+            disabled={busy}
+            onClick={() => switchMode('login')}
+          >
+            Back to log in
+          </button>
+        )}
+      </div>
       <p className="size-hint">
         This device uses a session login. Always log out before leaving a shared
         computer.

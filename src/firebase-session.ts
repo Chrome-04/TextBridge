@@ -64,8 +64,9 @@ export function canUseNotes(user: User | null): boolean {
   return (
     !!user &&
     !user.isAnonymous &&
-    (user.emailVerified ||
-      user.providerData.some((provider) => provider.providerId === 'apple.com'))
+    user.providerData.some((provider) =>
+      ['password', 'google.com', 'apple.com'].includes(provider.providerId),
+    )
   )
 }
 

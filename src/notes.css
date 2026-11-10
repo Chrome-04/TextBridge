@@ -582,8 +582,7 @@
   }
 }
 
-.account-social,
-.account-verification {
+.account-social {
   display: grid;
   gap: 12px;
   margin-block: 20px;
@@ -596,9 +595,6 @@
   text-align: center;
   color: var(--muted);
   font-size: 14px;
-}
-.account-verification p {
-  overflow-wrap: anywhere;
 }
 
 .account-social .secondary-button {

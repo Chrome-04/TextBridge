@@ -21,7 +21,7 @@ accounts initialize their own registry atomically on their first successful save
 If any version of Saved notes has already been published, do this migration first.
 Never delete the database or reset existing notes. Accounts with more than 20
 notes retain every note; they can edit/share/delete, but cannot add more until
-their total is below 20. Existing email users must verify their address.
+their total is below 20. Email verification is not required.
 
 1. From the app folder, temporarily freeze note creation/deletion:
 
@@ -29,7 +29,7 @@ their total is below 20. Existing email users must verify their address.
    ./node_modules/.bin/firebase deploy --only firestore:rules --config firebase.notes-maintenance.json --project textbridge-8c8a4
    ```
 
-   Reading and editing existing notes remain available to verified owners.
+   Reading and editing existing notes remain available to authenticated owners.
    Both old and new clients are prevented from changing note membership while
    the migration scans it. The website may report that saves/deletes are denied.
 

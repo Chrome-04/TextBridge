@@ -944,18 +944,14 @@ export default function SavedNotes({ onShared }: { onShared: () => void }) {
           <span className="notes-welcome-icon" aria-hidden="true">
             ▤
           </span>
-          <h2>
-            {user
-              ? 'Verify your email to continue.'
-              : 'A notebook of your own.'}
-          </h2>
+          <h2>A notebook of your own.</h2>
           <p>
             Log in or create an account to save, edit, and find your notes
             across devices. Sending and receiving temporary text still works
             without an account.
           </p>
           <button className="primary-button" onClick={() => void logIn()}>
-            {user ? 'Verify email' : 'Log in or create account'}
+            Log in or create account
           </button>
         </section>
       )}

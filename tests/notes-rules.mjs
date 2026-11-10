@@ -8,8 +8,6 @@ import {
   createUserWithEmailAndPassword,
   signInAnonymously,
   deleteUser,
-  sendEmailVerification,
-  reload,
   signInWithCredential,
   GoogleAuthProvider,
   OAuthProvider,
@@ -33,15 +31,13 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 
-import { verifyEmulatorEmail } from './notes-auth-helpers.mjs'
-
 setLogLevel('silent')
 test(
   'private Firestore notes: owner CRUD, isolation, anonymous denial, schema and revision enforcement',
   { timeout: 90_000 },
   async () => {
     const clients = []
-    async function client(anonymous = false, verified = true) {
+    async function client(anonymous = false) {
       const app = initializeApp(
         { projectId: 'demo-textbridge', apiKey: 'demo-key' },
         randomUUID(),
@@ -59,15 +55,6 @@ test(
             `rules-${randomUUID()}@textbridge.invalid`,
             `Test-${randomUUID()}`,
           )
-      if (!anonymous && verified) {
-        await sendEmailVerification(user)
-        await verifyEmulatorEmail(user.email)
-        await reload(user)
-        assert.equal(
-          (await user.getIdTokenResult(true)).claims.email_verified,
-          true,
-        )
-      }
       const result = { app, auth, db, user }
       clients.push(result)
       return result
@@ -118,12 +105,13 @@ test(
     try {
       const alice = await client(),
         bob = await client(),
-        guest = await client(true),
-        unverified = await client(false, false)
+        guest = await client(true)
       const path = `users/${alice.user.uid}/notes/test`
-      await denied(create(unverified, 'no-verification'))
-      await denied(getDocFromServer(quota(unverified)))
-      console.log('Rules: verified owner create')
+      assert.equal(alice.user.emailVerified, false)
+      assert.equal(
+        (await alice.user.getIdTokenResult()).claims.email_verified,
+        false,
+      )
       await create(alice, 'test')
       assert.equal(
         (await getDocFromServer(doc(alice.db, path))).data().text,
