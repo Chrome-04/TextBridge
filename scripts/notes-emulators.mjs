@@ -18,7 +18,7 @@ const test = process.argv[2] === 'test'
 const args = test
   ? [
       'emulators:exec',
-      'node --experimental-strip-types --test tests/notes-rules.mjs && node node_modules/@playwright/test/cli.js test --config=playwright.notes.config.ts',
+      'node --experimental-strip-types --test --test-concurrency=1 tests/notes-rules.mjs tests/notes-migration.mjs && node node_modules/@playwright/test/cli.js test --config=playwright.notes.config.ts',
     ]
   : [
       'emulators:start',

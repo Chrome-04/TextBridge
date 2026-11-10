@@ -3,6 +3,8 @@ import {
   initializeAuth,
   browserSessionPersistence,
   connectAuthEmulator,
+  browserPopupRedirectResolver,
+  type User,
 } from 'firebase/auth'
 import {
   initializeAppCheck,
@@ -31,7 +33,10 @@ function initialize() {
     throw new Error('Firebase connection is not configured.')
   const app = initializeApp(config, 'textbridge-public')
   // School/shared computers should not retain an account after its tab closes.
-  const auth = initializeAuth(app, { persistence: browserSessionPersistence })
+  const auth = initializeAuth(app, {
+    persistence: browserSessionPersistence,
+    popupRedirectResolver: browserPopupRedirectResolver,
+  })
   if (notesAreLocal)
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', {
       disableWarnings: true,
@@ -53,6 +58,15 @@ function initialize() {
 export function firebaseSession() {
   session ||= initialize()
   return session
+}
+
+export function canUseNotes(user: User | null): boolean {
+  return (
+    !!user &&
+    !user.isAnonymous &&
+    (user.emailVerified ||
+      user.providerData.some((provider) => provider.providerId === 'apple.com'))
+  )
 }
 
 // Guest token requests and account changes must never overwrite each other.

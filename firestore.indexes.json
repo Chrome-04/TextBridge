@@ -3,6 +3,7 @@
   "fieldOverrides": [
     { "collectionGroup": "notes", "fieldPath": "document", "indexes": [] },
     { "collectionGroup": "notes", "fieldPath": "text", "indexes": [] },
-    { "collectionGroup": "notes", "fieldPath": "title", "indexes": [] }
+    { "collectionGroup": "notes", "fieldPath": "title", "indexes": [] },
+    { "collectionGroup": "noteState", "fieldPath": "noteIds", "indexes": [] }
   ]
 }

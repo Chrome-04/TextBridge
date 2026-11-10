@@ -3,7 +3,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { QRCodeSVG } from 'qrcode.react'
 import { useNotesAccount } from './NotesAccount'
-import { notesAreLocal } from './firebase-session'
+import { notesAreLocal, canUseNotes } from './firebase-session'
 import {
   documentFromText,
   MAX_NOTE_TEXT,
@@ -13,6 +13,7 @@ import {
   type NoteNode,
 } from './note-document'
 import {
+  MAX_SAVED_NOTES,
   loadNote,
   loadNotes,
   newNoteId,
@@ -646,6 +647,7 @@ function NotesLibrary({
 }) {
   const { requestedNote, leaveGuard } = useNotesAccount()
   const [notes, setNotes] = useState<SavedNote[]>([])
+  const [total, setTotal] = useState<number | null>(null)
   const [cursor, setCursor] = useState<NotePage['cursor']>()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [opening, setOpening] = useState(0)
@@ -706,10 +708,13 @@ function NotesLibrary({
           : page.notes,
       )
       setCursor(page.cursor)
+      setTotal(page.total)
       setWarning(
-        page.unreadable
-          ? 'A note with unsupported formatting could not be opened. Its saved data has not been changed.'
-          : '',
+        page.total === null
+          ? 'The owner needs to update notes setup. Your existing notes are safe.'
+          : page.unreadable
+            ? 'A note with unsupported formatting could not be opened. Its saved data has not been changed.'
+            : '',
       )
     } catch (failure) {
       if (request.current === operation) setError(notesError(failure))
@@ -755,6 +760,7 @@ function NotesLibrary({
           <button
             type="button"
             className="primary-button"
+            disabled={loading || total === null || total >= MAX_SAVED_NOTES}
             onClick={() => {
               if (!confirmLeave()) return
               selectionRequest.current++
@@ -783,7 +789,11 @@ function NotesLibrary({
           onChange={(event) => setSearch(event.target.value)}
         />
         <div className="notes-list-meta">
-          <span>{notes.length} loaded</span>
+          <span role="status">
+            {total === null
+              ? `${notes.length} loaded`
+              : `${total} / ${MAX_SAVED_NOTES} notes saved`}
+          </span>
           <button
             className="text-button"
             disabled={loading}
@@ -792,6 +802,12 @@ function NotesLibrary({
             Refresh notes
           </button>
         </div>
+        {total !== null && total >= MAX_SAVED_NOTES && (
+          <p className="size-hint">
+            All 20 slots are in use. You can edit or share existing notes.
+            Delete one to save a new note.
+          </p>
+        )}
         {error && (
           <p className="field-error" role="alert">
             {error}
@@ -866,6 +882,7 @@ function NotesLibrary({
               ),
             )
             setDraft((current) => (current?.id === draft.id ? note : current))
+            void refresh()
           }}
           onDeleted={() => {
             dirty.current = false
@@ -915,7 +932,7 @@ export default function SavedNotes({ onShared }: { onShared: () => void }) {
       )}
       {!ready ? (
         <p role="status">Checking your account…</p>
-      ) : user ? (
+      ) : user && canUseNotes(user) ? (
         <>
           <p className="notes-account-label">
             Signed in as <span>{user.email}</span>
@@ -927,22 +944,26 @@ export default function SavedNotes({ onShared }: { onShared: () => void }) {
           <span className="notes-welcome-icon" aria-hidden="true">
             ▤
           </span>
-          <h2>A notebook of your own.</h2>
+          <h2>
+            {user
+              ? 'Verify your email to continue.'
+              : 'A notebook of your own.'}
+          </h2>
           <p>
             Log in or create an account to save, edit, and find your notes
             across devices. Sending and receiving temporary text still works
             without an account.
           </p>
           <button className="primary-button" onClick={() => void logIn()}>
-            Log in or create account
+            {user ? 'Verify email' : 'Log in or create account'}
           </button>
         </section>
       )}
       <p className="size-hint notes-private-hint">
-        Notes stay in your account until you delete them. Text only, up to
-        50,000 characters per note. Save is manual; formatting stays in your
-        notes and sharing sends plain text. Log out when you finish on a shared
-        computer.
+        Keep up to 20 notes at a time. Deleting one frees a slot. Notes stay in
+        your account until you delete them. Text only, up to 50,000 characters
+        per note. Save is manual; formatting stays in your notes and sharing
+        sends plain text. Log out when you finish on a shared computer.
       </p>
     </>
   )

@@ -1,6 +1,6 @@
 # Saved notes: manual setup and deployment
 
-The website now has email/password accounts and a private text notebook. Nothing
+The website has Google, Apple, verified email/password accounts and a private text notebook with 20 notes per account. See AUTH_SETUP.md for provider configuration and NOTE_LIMIT_SETUP.md before upgrading an existing notes database. Nothing
 in this feature setup has been deployed by the assistant. Your existing public
 version stays as it is until you complete the steps below.
 
@@ -10,7 +10,7 @@ version stays as it is until you complete the steps below.
 - **Tiptap**: editable document formatting: bold, italic, underline, lists, undo,
   redo, and a small emoji picker. Text is validated as document JSON; shared text
   never becomes HTML.
-- **Firebase Authentication**: email/password signup, login, logout, password reset.
+- **Firebase Authentication**: Google/Apple sign-in, verified email/password signup, login, logout, password reset.
   Anonymous Authentication remains available for visitors who only share text.
 - **Cloud Firestore**: private notes at `users/{Firebase UID}/notes/{note ID}`.
   Owner rules restrict reads and writes to that account; anonymous users cannot
@@ -62,7 +62,7 @@ In the [Firebase console](https://console.firebase.google.com/), select the
    `textbridge-8c8a4.web.app` is allowed. Add your own custom hostname if you use one.
 5. Under **Templates**, review the password-reset email and sender display name.
 
-No Google sign-in, phone/SMS sign-in, or new administrator key is required.
+Google and Apple require their own provider setup; see AUTH_SETUP.md. Phone/SMS is not used. No new administrator key is required in the web app.
 The UI requests at least eight password characters; stronger Firebase password
 policies may add requirements. Accounts use browser session persistence, so always
 log out explicitly on shared computers, especially if the browser restores tabs.
@@ -101,9 +101,9 @@ Review the project ID in the CLI output before confirming. This command does not
 deploy the retained legacy Firebase Functions or Storage backend. Do not run an
 untargeted `firebase deploy` using the old `firebase.json`.
 
-The checked-in `firestore.rules` allows only the password-authenticated owner to
+The checked-in `firestore.rules` allows only a verified email/Google or Apple-authenticated owner to
 access their notes, validates fields/sizes/timestamps/revisions, and limits list
-requests to 30 notes. All other browser database access remains denied. Index
+requests to 30 notes, and enforces 20 stored notes through an atomic private quota registry. If notes already exist, follow NOTE_LIMIT_SETUP.md before deploying. All other browser database access remains denied. Index
 exemptions keep the document body, plain text, and title out of automatic indexes;
 the library orders by `updatedAt` and searches already-loaded notes locally.
 
@@ -137,7 +137,7 @@ tokens. Keep the previously required Supabase live configuration and cleanup job
 
 1. Without logging in, send and receive sample text. Existing guest sharing should
    still work, including expiry and the share count.
-2. Type a draft on Send, click **Save to Notes**, and create an account. Confirm
+2. Type a draft on Send, click **Save to Notes**, and create an account. Open the verification email, return and choose **I verified my email**. Confirm
    the success message and open the new note.
 3. Edit the title and text, try bold/italic/lists/emoji, and click **Save note**.
 4. Log into the same account on another device. Open Saved and refresh its list.
@@ -166,8 +166,7 @@ tokens. Keep the previously required Supabase live configuration and cleanup job
   because a Firestore document must fit below its document-size limit.
 - Notes have no expiry. Save is manual; refresh the list to see changes from
   another device. The library fetches 30 at a time; **Load more notes** fetches
-  older notes. Search checks the loaded list. There is no per-account note-count
-  quota in this version; total project capacity remains subject to Firebase limits.
+  older notes retained from older installations. Search checks the loaded list. Each account may store **20 notes at once**. Editing/sharing does not use slots; deleting frees one. Total project usage remains subject to Firebase limits.
 - Concurrent edits are not silently overwritten. A conflict offers the latest
   version or **Save edits as new note**. Save errors retain the open draft.
 - Drafts live only in memory. Leaving, closing, or reloading without saving can

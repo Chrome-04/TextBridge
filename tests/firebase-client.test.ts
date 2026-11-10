@@ -59,16 +59,18 @@ async function tokens(
 test('signed Firebase identity and App Check return a stable guest rate-limit identity', async () => {
   assert.equal(await verify(await tokens()), 'firebase:guest-uid')
 })
-test('registered password accounts keep verified temporary sharing access', async () => {
-  assert.equal(
-    await verify(
-      await tokens({
-        sub: 'account-uid',
-        firebase: { sign_in_provider: 'password' },
-      }),
-    ),
-    'firebase:account-uid',
-  )
+test('password, Google and Apple accounts keep verified temporary sharing access', async () => {
+  for (const provider of ['password', 'google.com', 'apple.com']) {
+    assert.equal(
+      await verify(
+        await tokens({
+          sub: 'account-uid',
+          firebase: { sign_in_provider: provider },
+        }),
+      ),
+      'firebase:account-uid',
+    )
+  }
   assert.equal(
     await verify(
       await tokens(

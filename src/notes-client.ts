@@ -15,8 +15,9 @@ import {
   type QueryDocumentSnapshot,
   type Timestamp,
 } from 'firebase/firestore'
-import { firebaseSession, notesAreLocal } from './firebase-session'
+import { firebaseSession, notesAreLocal, canUseNotes } from './firebase-session'
 import { notePayload, validateDocument, type NoteNode } from './note-document'
+export const MAX_SAVED_NOTES = 20
 export { notesError } from './notes-error'
 
 let database: ReturnType<typeof getFirestore> | undefined
@@ -30,7 +31,7 @@ function db() {
 }
 function owner(uid: string) {
   const user = firebaseSession().auth.currentUser
-  if (!user || user.isAnonymous || user.uid !== uid)
+  if (!user || !canUseNotes(user) || user.uid !== uid)
     throw new Error('Please log in again to access your notes.')
   return collection(db(), 'users', uid, 'notes')
 }
@@ -69,14 +70,17 @@ export async function loadNotes(
   uid: string,
   cursor?: QueryDocumentSnapshot<DocumentData>,
 ) {
-  const result = await getDocsFromServer(
-    query(
-      owner(uid),
-      orderBy('updatedAt', 'desc'),
-      ...(cursor ? [startAfter(cursor)] : []),
-      limit(30),
+  const [usage, result] = await Promise.all([
+    getDocFromServer(doc(db(), 'users', uid, 'noteState', 'quota')),
+    getDocsFromServer(
+      query(
+        owner(uid),
+        orderBy('updatedAt', 'desc'),
+        ...(cursor ? [startAfter(cursor)] : []),
+        limit(30),
+      ),
     ),
-  )
+  ])
   // A malformed record must not prevent access to the rest of the library.
   const notes: SavedNote[] = []
   let unreadable = 0
@@ -89,6 +93,11 @@ export async function loadNotes(
   }
   return {
     notes,
+    total: usage.exists()
+      ? Object.keys(quotaIds(usage.data())).length
+      : result.empty && !cursor
+        ? 0
+        : null,
     cursor:
       result.docs.length === 30
         ? result.docs[result.docs.length - 1]
@@ -105,6 +114,26 @@ export async function loadNote(uid: string, id: string) {
   return decode(result.id, result.data())
 }
 
+function quotaIds(data: DocumentData): Record<string, true> {
+  const ids = data.noteIds
+  if (
+    !ids ||
+    typeof ids !== 'object' ||
+    Array.isArray(ids) ||
+    Object.values(ids).some((value) => value !== true)
+  )
+    throw new Error(
+      'Your notes setup needs updating. Your existing notes are safe; please contact the site owner.',
+    )
+  return ids
+}
+export class NoteLimitError extends Error {
+  constructor() {
+    super(
+      'You have reached the 20-note limit. Delete a saved note to free a slot. Your text is still here.',
+    )
+  }
+}
 export class NoteConflict extends Error {
   constructor() {
     super(
@@ -149,6 +178,23 @@ export async function saveNote(
       }
     }
     if (expectedRevision !== null) throw new NoteConflict()
+    const quota = doc(db(), 'users', uid, 'noteState', 'quota')
+    const usage = await transaction.get(quota)
+    const ids = usage.exists() ? quotaIds(usage.data()) : {}
+    if (!usage.exists()) {
+      // Old installations must be backfilled by the owner before quota rules go live.
+      const legacy = await getDocsFromServer(query(owner(uid), limit(1)))
+      if (!legacy.empty)
+        throw new Error(
+          'Your notes setup needs updating. Your existing notes are safe; please contact the site owner.',
+        )
+    }
+    if (Object.keys(ids).length >= MAX_SAVED_NOTES) throw new NoteLimitError()
+    transaction.set(quota, {
+      noteIds: { ...ids, [id]: true },
+      changedNoteId: id,
+      updatedAt: serverTimestamp(),
+    })
     transaction.set(ref, {
       ...payload,
       createdAt: serverTimestamp(),
@@ -171,6 +217,23 @@ export async function removeNote(uid: string, id: string, revision: number) {
     const item = await transaction.get(ref)
     if (!item.exists()) return
     if (item.data().revision !== revision) throw new NoteConflict()
+    const quota = doc(db(), 'users', uid, 'noteState', 'quota')
+    const usage = await transaction.get(quota)
+    if (!usage.exists())
+      throw new Error(
+        'Your notes setup needs updating before deletion. Your existing notes are safe; please contact the site owner.',
+      )
+    const ids = { ...quotaIds(usage.data()) }
+    if (!ids[id])
+      throw new Error(
+        'Your notes setup needs updating. Your existing notes are safe; please contact the site owner.',
+      )
+    delete ids[id]
+    transaction.set(quota, {
+      noteIds: ids,
+      changedNoteId: id,
+      updatedAt: serverTimestamp(),
+    })
     transaction.delete(ref)
   })
 }

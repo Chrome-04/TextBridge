@@ -1,6 +1,7 @@
 # TextBridge project instructions
 
 ## Scope
+
 - The user will deploy manually. Provide guidance; do not execute cloud deployment
   unless the user explicitly asks the assistant to perform it. The earlier “let's
   deploy” was clarified as a request for manual instructions.
@@ -12,7 +13,7 @@
   expense tracker. Local CLI commands must explicitly use demo-textbridge.
 - Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
   OR one file strictly under 20,000,000 bytes. Guest sharing needs no account.
-  The user approved optional Firebase email/password accounts and private Firestore
+  The user approved optional Firebase Google/Apple and verified email/password accounts and private Firestore
   Saved notes. No payments, 24-hour option, or one-time reads. Download files;
   never embed active content. No Clipboard feature.
 - Generate a code, same-origin /receive#CODE link, and locally rendered QR code.
@@ -24,6 +25,7 @@
   encryption, interpret shared text as HTML, or log text/codes.
 
 ## Setup and verification
+
 - Supabase is the default and its real SQL/Storage/Edge tests pass. See
   `SUPABASE_SETUP.md`. The normal preview uses local Supabase. The user deployed the
   public Firebase Hosting + Supabase direct HTTPS setup, without a separate
@@ -48,6 +50,7 @@
 - Verify desktop and mobile changes. Keep test artifacts and data ignored.
 
 ## Architecture
+
 - `src/App.tsx`: UI, demo simulation, and `/` / `/receive` history routing.
 - `src/HelpSections.tsx`: how-it-works guide and keyboard-accessible FAQ.
 - `src/AboutSection.tsx`: the founder's classroom story before Contact, with an
@@ -69,7 +72,7 @@
 - `src/NotesAccount.tsx`, `src/SavedNotes.tsx`: optional email/password accounts,
   Save to Notes on Send/Receive, and a private formatted notebook at `/saved`.
   Save text only (50,000 characters / 200,000 UTF-8 document bytes), not files.
-  Manual save, search loaded notes, 30-note pagination, optimistic revision checks,
+  20 stored notes per account, manual save, search loaded notes, retained legacy pagination, optimistic revision checks,
   explicit deletion confirmation, and plain-text temporary sharing snapshots.
   Notes persist until deletion independently of sharing expiry. No Clipboard UI.
 - `src/firebase-session.ts`: shared session-only Firebase Auth for guest/account
@@ -107,6 +110,7 @@
 - `tests/demo-store.test.ts`: data behavior; `tests/browser/`: user flows.
 
 ## Before future live deployments (owner handles publication)
+
 - Live access is enabled in the user's cloud backend; retain its access gate. Configure and test public abuse controls,
   backend rate salt, origin allowlist, and scheduled cleanup before enabling it.
   Supabase verifies Firebase guest JWTs and App Check JWTs itself. Ignore client
@@ -119,6 +123,7 @@
   protection still unconfigured. Test on the chosen production runtime.
 
 ## Git and secrets
+
 - Preserve work/history. Commit checkpoints after verified stages.
 - Keep configuration examples placeholder-only. Never commit shared text,
   credentials, service-account keys, dependencies, builds, or emulator exports.
@@ -126,6 +131,7 @@
   request passwords/tokens in chat or force-push over unknown remote history.
 
 ## Public preparation checkpoint
+
 - Firebase TextBridge Web is registered; private pending config is ignored under
   secrets/. The user manually deployed the website/backend; no assistant deployment
   or billing change has occurred. The live homepage returns HTTP 200.
@@ -150,6 +156,7 @@
 - The retained real local Supabase integration checks passed at the prior checkpoint.
 
 ## Saved notes checkpoint (November 10)
+
 - Optional email/password accounts and private formatted Saved notes are implemented
   locally. No account provider, cloud Firestore database/rules, or website update
   was deployed by the assistant. Follow SAVED_NOTES_SETUP.md before publishing.
@@ -167,3 +174,28 @@
 - The normal local preview needs `npm run notes:emulators` for accounts/notes;
   temporary sharing still uses local Supabase. Never import emulator accounts or
   test notes into the public project. No new administrator secret is required.
+
+## Account providers and note-cap update (November 10)
+
+- Saved notes require a verified password/Google identity or Apple-authenticated
+  owner. Email signup sends verification, with resend and explicit refreshed-token
+  confirmation. Forgot password uses Firebase email action links. Google/Apple
+  use popups so unsaved source text stays on screen; no account merging is added.
+- `AUTH_SETUP.md` documents manual Firebase Google/email and Apple Developer
+  configuration. Real provider consent, Apple relay, inbox delivery, and Safari
+  behavior require owner checks. No cloud providers or billing were changed.
+- The hard limit is 20 concurrent saved notes, never a daily quota. Creation and
+  deletion atomically update `users/{uid}/noteState/quota`; rule checks require
+  exactly one matching note-ID addition/removal. Editing/sharing still work full.
+  A server-backed counter and clear errors preserve drafts on rejected saves.
+- `NOTE_LIMIT_SETUP.md` documents the safe legacy upgrade: maintenance rules
+  freeze membership changes, the owner-only Admin script backfills exact IDs,
+  then final rules/Hosting are deployed manually. Never auto-delete old notes.
+  Over-limit legacy accounts can edit/share/delete until below 20.
+- `functions/migrate-note-quota.mjs` is an owner-run CLI, never imported by cloud
+  Functions or the browser. `--uid` scopes an individual account for local tests.
+  Local commands must target `demo-textbridge`; cloud credentials never enter VITE.
+- Local Auth/Firestore checks cover verified providers, 20-slot races, bypass
+  attempts, deletion/refill, and legacy migration. Browser tests cover verification,
+  password-reset completion, cancelled/full provider popups, counters, and draft
+  preservation across desktop/mobile/320px. Follow setup guides before publishing.

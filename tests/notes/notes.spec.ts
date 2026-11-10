@@ -2,6 +2,10 @@ import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { randomUUID } from 'node:crypto'
 
+// @ts-expect-error Node-only emulator helper has no declaration file.
+import { verifyEmulatorEmail } from '../notes-auth-helpers.mjs'
+
+test.use({ actionTimeout: 20_000 })
 const password = 'TextBridge-test-923!'
 const accounts: { uid: string; token: string }[] = []
 test.beforeEach(async ({ page }) => {
@@ -19,6 +23,11 @@ async function signUp(page: Page, email: string) {
   await dialog
     .getByRole('button', { name: 'Create account', exact: true })
     .click()
+  await expect(
+    dialog.getByRole('heading', { name: 'Verify your email.' }),
+  ).toBeVisible()
+  await verifyEmulatorEmail(email)
+  await dialog.getByRole('button', { name: 'I verified my email' }).click()
   await expect(dialog).not.toBeVisible()
   const account = await page.evaluate(async () => {
     const module = await import('/src/firebase-session.ts' /* @vite-ignore */)
@@ -68,6 +77,10 @@ test.afterEach(async () => {
         method: 'DELETE',
         headers: { Authorization: 'Bearer owner' },
       })
+    await fetch(
+      `http://127.0.0.1:8082/v1/projects/demo-textbridge/databases/(default)/documents/users/${account.uid}/noteState/quota`,
+      { method: 'DELETE', headers: { Authorization: 'Bearer owner' } },
+    )
     await fetch(
       'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=demo-key',
       {
@@ -302,4 +315,266 @@ test('lists, unsaved edits and concurrent changes are recoverable', async ({
   await page.getByRole('button', { name: 'Refresh notes' }).click()
   await expect(page.locator('.notes-list li')).toHaveCount(1)
   await other.close()
+})
+
+test('20 slots, draft preservation, edit/share at cap and delete to free a slot', async ({
+  page,
+}, info) => {
+  await page.goto('/saved')
+  await page.getByRole('button', { name: 'Log in or create account' }).click()
+  await signUp(page, `capacity-${randomUUID()}@textbridge.invalid`)
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '0 / 20 notes saved',
+  )
+  await page.evaluate(async () => {
+    const { firebaseSession } = await import(
+      '/src/firebase-session.ts' /* @vite-ignore */
+    )
+    const notes = await import('/src/notes-client.ts' /* @vite-ignore */)
+    const { documentFromText } = await import(
+      '/src/note-document.ts' /* @vite-ignore */
+    )
+    const uid = firebaseSession().auth.currentUser!.uid
+    for (let i = 1; i <= 20; i++)
+      await notes.saveNote(
+        uid,
+        notes.newNoteId(uid),
+        `Note ${i}`,
+        documentFromText(`Thought ${i}`),
+        null,
+      )
+  })
+  await page.getByRole('button', { name: 'Refresh notes' }).click()
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '20 / 20 notes saved',
+  )
+  await expect(page.getByRole('button', { name: '+ New note' })).toBeDisabled()
+  await page.getByLabel('Search loaded notes').fill('Note 20')
+  await expect(page.locator('.notes-list li')).toHaveCount(1)
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '20 / 20 notes saved',
+  )
+  await page.locator('.notes-list button').click()
+  await page
+    .getByRole('textbox', { name: 'Note content', exact: true })
+    .fill('Edited at capacity')
+  await page.getByRole('button', { name: 'Save note', exact: true }).click()
+  await expect(page.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/)
+  await page.getByRole('button', { name: 'Share note', exact: true }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Generate sharing code' })
+    .click()
+  await expect(page.locator('.notes-share-code')).toHaveText(/^[A-Z2-9]{6}$/)
+  await page.getByRole('button', { name: 'Back to note' }).click()
+  await assertLayout(page)
+  await page.screenshot({
+    path: `artifacts/notes-capacity-${info.project.name}.png`,
+    fullPage: true,
+  })
+  await page.goto('/')
+  await page
+    .getByLabel('Text or link', { exact: true })
+    .fill('Keep my unsaved twenty-first thought')
+  await page.getByRole('button', { name: 'Save to Notes', exact: true }).click()
+  await expect(page.locator('.notes-toast')).toContainText('20-note limit')
+  await expect(page.getByLabel('Text or link', { exact: true })).toHaveValue(
+    'Keep my unsaved twenty-first thought',
+  )
+  await page.goto('/saved')
+  await page.locator('.notes-list button').first().click()
+  await page.getByRole('button', { name: 'Delete note', exact: true }).click()
+  await page.getByRole('button', { name: 'Yes, delete note' }).click()
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '19 / 20 notes saved',
+  )
+  await page.getByRole('button', { name: '+ New note' }).click()
+  await page
+    .getByRole('textbox', { name: 'Note content', exact: true })
+    .fill('Replacement thought')
+  await page.getByRole('button', { name: 'Save note', exact: true }).click()
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '20 / 20 notes saved',
+  )
+})
+
+test('email verification, resend, password reset and cancelled provider popup preserve the draft', async ({
+  page,
+}, info) => {
+  const email = `verify-${randomUUID()}@textbridge.invalid`
+  await page.goto('/')
+  await page
+    .getByLabel('Text or link', { exact: true })
+    .fill('Keep this while I verify')
+  await page.getByRole('button', { name: 'Save to Notes', exact: true }).click()
+  let dialog = page.getByRole('dialog')
+  for (const name of ['Google', 'Apple'])
+    await expect(
+      dialog.getByRole('button', { name: `Continue with ${name}` }),
+    ).toBeVisible()
+  const popupEvent = page.waitForEvent('popup')
+  await dialog.getByRole('button', { name: 'Continue with Google' }).click()
+  const popup = await popupEvent
+  await popup.close()
+  await expect(dialog.getByRole('alert')).toContainText('cancelled', {
+    timeout: 20_000,
+  })
+  await expect(page.getByLabel('Text or link', { exact: true })).toHaveValue(
+    'Keep this while I verify',
+  )
+  await page.screenshot({
+    path: `artifacts/account-options-${info.project.name}.png`,
+    fullPage: true,
+  })
+  await dialog
+    .getByRole('button', { name: 'New here? Create an account' })
+    .click()
+  await dialog.getByLabel('Email', { exact: true }).fill(email)
+  await dialog.getByLabel('Password', { exact: true }).fill(password)
+  await dialog.getByLabel('Confirm password').fill(password)
+  await dialog
+    .getByRole('button', { name: 'Create account', exact: true })
+    .click()
+  await expect(
+    dialog.getByRole('heading', { name: 'Verify your email.' }),
+  ).toBeVisible()
+  // Register the account before assertions so cleanup also runs on failures.
+  accounts.push(
+    await page.evaluate(async () => {
+      const { firebaseSession } = await import(
+        '/src/firebase-session.ts' /* @vite-ignore */
+      )
+      const user = firebaseSession().auth.currentUser!
+      return { uid: user.uid, token: await user.getIdToken() }
+    }),
+  )
+  await expect(dialog.getByRole('button', { name: /Resend in/ })).toBeDisabled()
+  await dialog.getByRole('button', { name: 'I verified my email' }).click()
+  await expect(dialog.getByRole('status')).toContainText('not verified yet')
+  await expect(page.locator('.notes-toast')).not.toBeVisible()
+  await verifyEmulatorEmail(email)
+  await dialog.getByRole('button', { name: 'I verified my email' }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('.notes-toast')).toContainText(
+    'Saved to your private notes.',
+  )
+  await logOut(page)
+  await page.getByRole('button', { name: 'Save to Notes', exact: true }).click()
+  dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Forgot password?' }).click()
+  await expect(
+    dialog.getByRole('button', { name: 'Continue with Google' }),
+  ).toHaveCount(0)
+  await dialog.getByLabel('Email', { exact: true }).fill(email)
+  await dialog.getByRole('button', { name: 'Send reset link' }).click()
+  await expect(dialog.getByRole('status')).toContainText(
+    'Password reset link generated',
+  )
+  const response = await fetch(
+    'http://127.0.0.1:9099/emulator/v1/projects/demo-textbridge/oobCodes',
+  )
+  const { oobCodes } = await response.json()
+  const reset = oobCodes
+    .filter(
+      (item: { email: string; requestType: string }) =>
+        item.email === email && item.requestType === 'PASSWORD_RESET',
+    )
+    .at(-1)
+  expect(reset).toBeTruthy()
+  const newPassword = 'Reset-test-8473!'
+  const applied = await fetch(
+    'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=demo-key',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oobCode: reset.oobCode, newPassword }),
+    },
+  )
+  expect(applied.ok).toBe(true)
+  await dialog.getByRole('button', { name: 'Back to log in' }).click()
+  await dialog.getByLabel('Password', { exact: true }).fill(newPassword)
+  await dialog.getByRole('button', { name: 'Log in', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('.notes-toast')).toContainText(
+    'Saved to your private notes.',
+  )
+  await assertLayout(page)
+})
+
+test('Google and Apple popup sign-in save and reopen the same private library', async ({
+  page,
+}, info) => {
+  await page.goto('/saved')
+  for (const provider of ['Google', 'Apple']) {
+    const email = `provider-${randomUUID()}@textbridge.invalid`
+    await page.getByRole('button', { name: 'Log in or create account' }).click()
+    const dialog = page.getByRole('dialog')
+    const accessibility = await new AxeBuilder({ page })
+      .include('.account-dialog')
+      .analyze()
+    expect(accessibility.violations.map((violation) => violation.id)).toEqual(
+      [],
+    )
+    await page.screenshot({
+      path: `artifacts/signin-${info.project.name}.png`,
+      fullPage: true,
+    })
+    const open = page.waitForEvent('popup')
+    await dialog
+      .getByRole('button', { name: `Continue with ${provider}` })
+      .click()
+    const popup = await open
+    await popup.waitForURL(/127\.0\.0\.1:9099\/emulator\/auth\/handler/)
+    await popup.waitForLoadState('load')
+    await popup.getByText('Add new account', { exact: true }).click()
+    await popup.locator('#email-input').fill(email)
+    await popup.locator('#display-name-input').fill(`Test ${provider}`)
+    await popup
+      .getByRole('button', {
+        name: /Sign in with/,
+      })
+      .click()
+    await expect(dialog).not.toBeVisible()
+    const account = await page.evaluate(async () => {
+      const { firebaseSession } = await import(
+        '/src/firebase-session.ts' /* @vite-ignore */
+      )
+      const user = firebaseSession().auth.currentUser!
+      return { uid: user.uid, token: await user.getIdToken() }
+    })
+    accounts.push(account)
+    await expect(page.locator('.notes-account-label')).toContainText(email)
+    await expect(page.locator('.notes-list-meta')).toContainText(
+      '0 / 20 notes saved',
+    )
+    await page.getByRole('button', { name: '+ New note' }).click()
+    await page
+      .getByLabel('Note title', { exact: true })
+      .fill(`${provider} thought`)
+    await page
+      .getByRole('textbox', { name: 'Note content', exact: true })
+      .fill('Private provider note')
+    await page.getByRole('button', { name: 'Save note', exact: true }).click()
+    await expect(page.locator('.notes-list-meta')).toContainText(
+      '1 / 20 notes saved',
+    )
+    await logOut(page)
+    await page.getByRole('button', { name: 'Log in or create account' }).click()
+    const reopen = page.waitForEvent('popup')
+    await page
+      .getByRole('button', { name: `Continue with ${provider}` })
+      .click()
+    const returning = await reopen
+    await returning.waitForURL(/127\.0\.0\.1:9099\/emulator\/auth\/handler/)
+    await returning.waitForLoadState('load')
+    await returning.getByText(email, { exact: true }).click()
+    await expect(page.getByRole('dialog')).not.toBeVisible()
+    await expect(page.locator('.notes-list')).toContainText(
+      `${provider} thought`,
+    )
+    await expect(page.locator('.notes-list-meta')).toContainText(
+      '1 / 20 notes saved',
+    )
+    await logOut(page)
+  }
 })

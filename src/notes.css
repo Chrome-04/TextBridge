@@ -581,3 +581,22 @@
     width: 100%;
   }
 }
+
+.account-social,
+.account-verification {
+  display: grid;
+  gap: 12px;
+  margin-block: 20px;
+}
+.account-social .secondary-button {
+  width: 100%;
+  justify-content: center;
+}
+.account-divider {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+.account-verification p {
+  overflow-wrap: anywhere;
+}

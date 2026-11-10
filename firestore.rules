@@ -3,7 +3,47 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function noteOwner(uid) {
       return request.auth != null && request.auth.uid == uid
-        && request.auth.token.firebase.sign_in_provider == 'password';
+        && ((request.auth.token.firebase.sign_in_provider in ['password', 'google.com']
+             && request.auth.token.email_verified == true)
+            || request.auth.token.firebase.sign_in_provider == 'apple.com');
+    }
+    function quotaPath(uid) {
+      return /databases/$(database)/documents/users/$(uid)/noteState/quota;
+    }
+    function notePath(uid, id) {
+      return /databases/$(database)/documents/users/$(uid)/notes/$(id);
+    }
+    function beforeIds(uid) {
+      return exists(quotaPath(uid)) ? get(quotaPath(uid)).data.noteIds : {};
+    }
+    function noteQuotaChange(uid, id, adding) {
+      let before = beforeIds(uid);
+      let after = getAfter(quotaPath(uid)).data;
+      return after.changedNoteId == id
+        && (adding
+          ? (!(id in before) && after.noteIds[id] == true && after.noteIds.size() == before.size() + 1 && after.noteIds.size() <= 20)
+          : (before[id] == true && !(id in after.noteIds) && after.noteIds.size() == before.size() - 1));
+    }
+    function validQuota(data) {
+      return data.keys().hasAll(['noteIds', 'changedNoteId', 'updatedAt'])
+        && data.keys().hasOnly(['noteIds', 'changedNoteId', 'updatedAt'])
+        && data.noteIds is map && data.changedNoteId is string
+        && data.changedNoteId.matches('^[A-Za-z0-9_-]{1,128}$')
+        && data.updatedAt == request.time;
+    }
+    function quotaChange(uid) {
+      let after = request.resource.data;
+      let before = beforeIds(uid);
+      let diff = after.noteIds.diff(before);
+      let id = after.changedNoteId;
+      return diff.changedKeys().size() == 0 && (
+        (diff.addedKeys().size() == 1 && diff.addedKeys().hasOnly([id])
+          && diff.removedKeys().size() == 0 && after.noteIds[id] == true && after.noteIds.size() <= 20
+          && !exists(notePath(uid, id)) && existsAfter(notePath(uid, id)))
+        || (diff.removedKeys().size() == 1 && diff.removedKeys().hasOnly([id])
+          && diff.addedKeys().size() == 0
+          && exists(notePath(uid, id)) && !existsAfter(notePath(uid, id)))
+      );
     }
     function validNote(data) {
       return data.keys().hasAll(['title', 'document', 'text', 'formatVersion', 'revision', 'createdAt', 'updatedAt'])
@@ -18,11 +58,16 @@ service cloud.firestore {
       allow get: if noteOwner(uid);
       allow list: if noteOwner(uid) && request.query.limit != null && request.query.limit <= 30;
       allow create: if noteOwner(uid) && validNote(request.resource.data)
-        && request.resource.data.createdAt == request.time && request.resource.data.revision == 1;
+        && request.resource.data.createdAt == request.time && request.resource.data.revision == 1
+        && noteQuotaChange(uid, noteId, true);
       allow update: if noteOwner(uid) && validNote(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.revision == resource.data.revision + 1;
-      allow delete: if noteOwner(uid);
+      allow delete: if noteOwner(uid) && noteQuotaChange(uid, noteId, false);
+    }
+    match /users/{uid}/noteState/quota {
+      allow get: if noteOwner(uid);
+      allow create, update: if noteOwner(uid) && validQuota(request.resource.data) && quotaChange(uid);
     }
     match /{document=**} { allow read, write: if false; }
   }
