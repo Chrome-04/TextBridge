@@ -398,7 +398,7 @@ function NoteEditor({
   initial: Draft
   onClose: () => void
   uid: string
-  onSaved: (note: SavedNote) => void
+  onSaved: (note: SavedNote, closeAfterSave: boolean) => void
   onDeleted: () => void
   onDirty: (dirty: boolean) => void
   onShared: () => void
@@ -416,7 +416,6 @@ function NoteEditor({
   const [title, setTitle] = useState(initial.title)
   const [document, setDocument] = useState<unknown>(initial.document)
   const [revision, setRevision] = useState(initial.revision)
-  const [id, setId] = useState(initial.id)
   const [saved, setSaved] = useState<SavedNote | null>(
     initial.revision === null
       ? null
@@ -429,7 +428,6 @@ function NoteEditor({
   )
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
-  const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [conflict, setConflict] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -446,6 +444,7 @@ function NoteEditor({
   const dirty =
     JSON.stringify([title, document, appearance.colour, appearance.pinned]) !==
     baseline.current
+  const unchanged = revision !== null && !dirty
   const characters = plainText(document as NoteNode).length
   useEffect(() => {
     onDirty(dirty || busy)
@@ -464,11 +463,10 @@ function NoteEditor({
     busyRef.current = true
     setBusy(true)
     setError('')
-    setStatus('')
     try {
       // Validate before allocating a new ID so failed retries use the same ID.
       const payload = notePayload(title, document)
-      const target = copy ? newNoteId(uid) : id
+      const target = copy ? newNoteId(uid) : initial.id
       const result = await saveNote(
         uid,
         target,
@@ -477,19 +475,9 @@ function NoteEditor({
         copy ? null : revision,
         appearance,
       )
-      setId(result.id)
-      setTitle(result.title)
-      setRevision(result.revision)
-      setSaved(result)
-      baseline.current = JSON.stringify([
-        result.title,
-        document,
-        result.colour,
-        result.pinned,
-      ])
-      setStatus('Saved.')
-      setConflict(false)
-      onSaved(result)
+      const element = dialog.current
+      element?.close()
+      onSaved(result, element !== null)
     } catch (failure) {
       setError(notesError(failure))
       setConflict(failure instanceof NoteConflict)
@@ -504,6 +492,7 @@ function NoteEditor({
       (dirty && !window.confirm('Discard unsaved edits and close this note?'))
     )
       return
+    dialog.current?.close()
     onDirty(false)
     onClose()
   }
@@ -530,7 +519,7 @@ function NoteEditor({
                 ? 'Unsaved changes'
                 : revision === null
                   ? 'New note'
-                  : status || 'Saved'}
+                  : 'Saved'}
           </span>
           <div className="notes-actions">
             <button
@@ -544,10 +533,10 @@ function NoteEditor({
             <button
               type="button"
               className="primary-button"
-              disabled={busy || (!dirty && revision !== null)}
-              onClick={() => void persist()}
+              disabled={busy}
+              onClick={() => (unchanged ? closeEditor() : void persist())}
             >
-              {busy ? 'Please wait…' : 'Save note'}
+              {busy ? 'Please wait…' : unchanged ? 'Done' : 'Save note'}
             </button>
             <button
               type="button"
@@ -570,10 +559,7 @@ function NoteEditor({
           maxLength={MAX_NOTE_TITLE}
           value={title}
           disabled={busy}
-          onChange={(event) => {
-            setTitle(event.target.value)
-            setStatus('')
-          }}
+          onChange={(event) => setTitle(event.target.value)}
         />
         <div className="note-appearance">
           <div role="group" aria-label="Note colour" className="note-colours">
@@ -589,7 +575,6 @@ function NoteEditor({
                 disabled={busy}
                 onClick={() => {
                   setAppearance({ ...appearance, colour: colour.value })
-                  setStatus('')
                 }}
               >
                 <span aria-hidden="true">
@@ -605,7 +590,6 @@ function NoteEditor({
             disabled={busy}
             onClick={() => {
               setAppearance({ ...appearance, pinned: !appearance.pinned })
-              setStatus('')
             }}
           >
             <PinIcon />
@@ -616,10 +600,7 @@ function NoteEditor({
           key={reload}
           initial={document as NoteNode}
           disabled={busy}
-          onChange={(value) => {
-            setDocument(value)
-            setStatus('')
-          }}
+          onChange={setDocument}
         />
         <div className="notes-editor-bottom">
           <p
@@ -660,7 +641,7 @@ function NoteEditor({
                 setBusy(true)
                 setError('')
                 try {
-                  const latest = await loadNote(uid, id)
+                  const latest = await loadNote(uid, initial.id)
                   baseline.current = JSON.stringify([
                     latest.title,
                     latest.document,
@@ -677,7 +658,7 @@ function NoteEditor({
                   setSaved(latest)
                   setReload((n) => n + 1)
                   setConflict(false)
-                  onSaved(latest)
+                  onSaved(latest, false)
                 } catch (failure) {
                   setError(notesError(failure))
                 } finally {
@@ -716,7 +697,7 @@ function NoteEditor({
                   setBusy(true)
                   setError('')
                   try {
-                    await removeNote(uid, id, revision)
+                    await removeNote(uid, initial.id, revision)
                     onDirty(false)
                     onDeleted()
                   } catch (failure) {
@@ -771,6 +752,7 @@ function NotesLibrary({
   const [pinning, setPinning] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
+  const [saveNotice, setSaveNotice] = useState('')
   const dirty = useRef(false)
   const request = useRef(0)
   const selectionRequest = useRef(0)
@@ -843,6 +825,7 @@ function NotesLibrary({
   }, [uid])
   const select = async (id: string) => {
     if (!confirmLeave()) return
+    setSaveNotice('')
     const editsAtStart = editVersion.current
     const operation = ++selectionRequest.current
     setLoading(true)
@@ -879,33 +862,31 @@ function NotesLibrary({
         className="notes-sidebar notes-library"
         aria-label="Saved notes library"
       >
-        <div className="notes-sidebar-head">
-          <div>
-            <h2>Your notes</h2>
-            <p className="muted notes-library-hint">Make room for an idea.</p>
-          </div>
-          <button
-            type="button"
-            className="primary-button"
-            disabled={loading || total === null || total >= MAX_SAVED_NOTES}
-            onClick={() => {
-              if (!confirmLeave()) return
-              selectionRequest.current++
-              setLoading(false)
-              dirty.current = false
-              setDraft({
-                id: newNoteId(uid),
-                ...DEFAULT_NOTE_STYLE,
-                title: '',
-                document: documentFromText(''),
-                revision: null,
-              })
-              setOpening((n) => n + 1)
-            }}
-          >
-            + New note
-          </button>
-        </div>
+        <button
+          type="button"
+          className="notes-compose"
+          aria-label="Take a note"
+          aria-haspopup="dialog"
+          disabled={loading || total === null || total >= MAX_SAVED_NOTES}
+          onClick={() => {
+            if (!confirmLeave()) return
+            selectionRequest.current++
+            setLoading(false)
+            setSaveNotice('')
+            dirty.current = false
+            setDraft({
+              id: newNoteId(uid),
+              ...DEFAULT_NOTE_STYLE,
+              title: '',
+              document: documentFromText(''),
+              revision: null,
+            })
+            setOpening((n) => n + 1)
+          }}
+        >
+          <span>Take a note…</span>
+          <span aria-hidden="true">+</span>
+        </button>
         <div className="notes-search-row">
           <div className="notes-search-field">
             <SearchIcon />
@@ -946,11 +927,16 @@ function NotesLibrary({
           </div>
         </div>
         <div className="notes-list-meta">
-          <span role="status">
-            {total === null
-              ? `${notes.length} loaded`
-              : `${total} / ${MAX_SAVED_NOTES} notes saved`}
-          </span>
+          <div className="notes-list-status">
+            <span role="status">
+              {total === null
+                ? `${notes.length} loaded`
+                : `${total} / ${MAX_SAVED_NOTES} notes saved`}
+            </span>
+            <span className="note-save-notice" role="status">
+              {saveNotice}
+            </span>
+          </div>
           <button
             className="text-button"
             disabled={loading}
@@ -1076,13 +1062,17 @@ function NotesLibrary({
             setDraft(null)
           }}
           onDirty={setDirty}
-          onSaved={(note) => {
+          onSaved={(note, closeAfterSave) => {
             setNotes((old) =>
               [note, ...old.filter((item) => item.id !== note.id)].sort(
                 (a, b) => b.updatedAt - a.updatedAt,
               ),
             )
-            setDraft((current) => (current?.id === draft.id ? note : current))
+            if (closeAfterSave) {
+              dirty.current = false
+              setDraft(null)
+              setSaveNotice('Note saved.')
+            }
             void refresh()
           }}
           onDeleted={() => {

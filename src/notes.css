@@ -255,27 +255,36 @@
   min-width: 0;
   padding: 0;
 }
-.notes-sidebar-head {
+.notes-compose {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.notes-sidebar h2 {
-  font-size: 22px;
+  gap: 12px;
+  width: min(100%, 620px);
+  min-height: 54px;
+  margin: 0 auto 28px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: 0 4px 14px #0001;
+  text-align: left;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.03em;
 }
-.notes-library-hint {
-  font-size: 13px;
-  margin-top: 6px;
+.notes-compose > [aria-hidden='true'] {
+  color: var(--accent);
+  font-size: 22px;
+  line-height: 1;
 }
-.notes-sidebar-head .primary-button {
-  width: auto;
-  min-height: 44px;
-  padding: 10px 20px;
-  flex-shrink: 0;
+.notes-compose:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.notes-compose:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .notes-search-row {
   display: flex;
@@ -332,6 +341,17 @@
 }
 .notes-list-meta .text-button {
   font-size: 12px;
+}
+.notes-list-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.note-save-notice {
+  color: var(--accent);
+}
+.note-save-notice:empty {
+  width: 0;
 }
 .notes-empty {
   border: 1px dashed var(--border-strong);
@@ -542,8 +562,11 @@
 .rich-text .tiptap strong {
   font-weight: 700;
 }
+.notes-format-bar em,
 .rich-text .tiptap em {
   font-style: italic;
+  /* Manrope ships upright faces. Let the browser slant them in notes. */
+  font-synthesis: style;
 }
 .notes-editor-bottom {
   display: flex;
@@ -691,18 +714,8 @@
   .site-header .saved-nav {
     place-items: center;
   }
-  .notes-sidebar-head {
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .notes-sidebar h2 {
-    font-size: 20px;
-  }
-  .notes-library-hint {
-    font-size: 12px;
-  }
-  .notes-sidebar-head .primary-button {
-    padding: 10px 14px;
+  .notes-compose {
+    margin-bottom: 18px;
   }
   .notes-search-row {
     gap: 8px;

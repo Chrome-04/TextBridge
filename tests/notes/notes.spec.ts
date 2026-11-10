@@ -35,6 +35,10 @@ async function closeNote(page: Page) {
   const close = page.getByRole('button', { name: 'Close note', exact: true })
   if (await close.isVisible()) await close.click()
 }
+async function expectNoteSaved(page: Page) {
+  await expect(page.locator('.note-editor-dialog')).toHaveCount(0)
+  await expect(page.locator('.note-save-notice')).toHaveText('Note saved.')
+}
 async function logOut(page: Page) {
   await closeNote(page)
   await page.getByRole('button', { name: 'Profile', exact: true }).click()
@@ -140,14 +144,13 @@ test('profile and note cards work on desktop and phones', async ({
     ],
     ['Weekend plans', 'Bring a notebook and pick a spot by the window.', 'Sky'],
   ]) {
-    await page.getByRole('button', { name: '+ New note' }).click()
+    await page.getByRole('button', { name: 'Take a note' }).click()
     await page.getByLabel('Note title', { exact: true }).fill(title)
     await page.getByRole('textbox', { name: 'Note content' }).fill(content)
     await page.getByRole('button', { name: colour, exact: true }).click()
     await page.getByRole('button', { name: 'Save note', exact: true }).click()
-    await expect(page.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/)
+    await expectNoteSaved(page)
     await assertLayout(page)
-    await closeNote(page)
   }
   const cards = page.locator('.saved-note-card')
   await expect(cards.first()).toContainText('Weekend plans')
@@ -177,6 +180,8 @@ test('profile and note cards work on desktop and phones', async ({
   await page.screenshot({
     path: `artifacts/notes-edit-${info.project.name}.png`,
   })
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.locator('.note-editor-dialog')).toHaveCount(0)
   await logOut(page)
   await expect(cards).toHaveCount(0)
   await expect(header.getByText(email, { exact: true })).toHaveCount(0)
@@ -224,6 +229,7 @@ test('save before sharing, rich editing, permanent private library, snapshots an
   await expect(editor.locator('strong')).toContainText('Formatted thought')
   await page.getByRole('button', { name: 'Italic', exact: true }).click()
   await expect(editor.locator('em')).toContainText('Formatted thought')
+  await expect(editor.locator('em')).toHaveCSS('font-synthesis-style', 'auto')
   await page.getByRole('button', { name: 'Underline', exact: true }).click()
   await editor.press('ArrowRight')
   await page.getByRole('button', { name: 'Insert emoji', exact: true }).click()
@@ -233,9 +239,7 @@ test('save before sharing, rich editing, permanent private library, snapshots an
     'Classroom ideas',
   )
   await page.getByRole('button', { name: 'Save note', exact: true }).click()
-  await expect(page.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/, {
-    timeout: 20_000,
-  })
+  await expectNoteSaved(page)
   await page.reload()
   const classroomNote = page.getByRole('button', {
     name: 'Open note: Classroom ideas',
@@ -283,7 +287,8 @@ test('save before sharing, rich editing, permanent private library, snapshots an
   await share.getByRole('button', { name: 'Back to note' }).click()
   await editor.fill('Changed original after sharing')
   await page.getByRole('button', { name: 'Save note', exact: true }).click()
-  await expect(page.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/)
+  await expectNoteSaved(page)
+  await expect(classroomNote).toBeFocused()
   const received = await context.newPage()
   await received.goto(`/receive#${code}`)
   await received.getByRole('button', { name: 'View content' }).click()
@@ -352,7 +357,7 @@ test('lists, unsaved edits and concurrent changes are recoverable', async ({
   await page.goto('/saved')
   await page.getByRole('button', { name: 'Log in or create account' }).click()
   await signUp(page, `conflict-${randomUUID()}@textbridge.invalid`)
-  await page.getByRole('button', { name: '+ New note' }).click()
+  await page.getByRole('button', { name: 'Take a note' }).click()
   await page.getByLabel('Note title', { exact: true }).fill('Shared draft')
   const editor = page.getByRole('textbox', {
     name: 'Note content',
@@ -361,7 +366,8 @@ test('lists, unsaved edits and concurrent changes are recoverable', async ({
   await editor.fill('First item')
   await page.getByRole('button', { name: 'Numbered list' }).click()
   await page.getByRole('button', { name: 'Save note', exact: true }).click()
-  await expect(page.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/)
+  await expectNoteSaved(page)
+  await page.getByRole('button', { name: 'Open note: Shared draft' }).click()
   await expect(editor.locator('ol')).toContainText('First item')
   const other = await context.newPage()
   await other.goto('/saved')
@@ -382,7 +388,7 @@ test('lists, unsaved edits and concurrent changes are recoverable', async ({
     .getByRole('textbox', { name: 'Note content', exact: true })
     .fill('Latest version from another device')
   await other.getByRole('button', { name: 'Save note', exact: true }).click()
-  await expect(other.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/)
+  await expectNoteSaved(other)
   await editor.fill('My unsaved version')
   await context.setOffline(true)
   await page.getByRole('button', { name: 'Save note', exact: true }).click()
@@ -400,7 +406,7 @@ test('lists, unsaved edits and concurrent changes are recoverable', async ({
   )
   await expect(editor).toHaveText('My unsaved version')
   await page.getByRole('button', { name: 'Save edits as new note' }).click()
-  await expect(page.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/)
+  await expectNoteSaved(page)
   await expect(page.locator('.notes-list li')).toHaveCount(2)
   await closeNote(page)
   await page.getByLabel('Search loaded notes').fill('another device')
@@ -440,7 +446,7 @@ test('20 slots, draft preservation, edit/share at cap and delete to free a slot'
   await expect(page.locator('.notes-list-meta')).toContainText(
     '20 / 20 notes saved',
   )
-  await expect(page.getByRole('button', { name: '+ New note' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Take a note' })).toBeDisabled()
   await page.getByLabel('Search loaded notes').fill('Note 20')
   await expect(page.locator('.notes-list li')).toHaveCount(1)
   await expect(page.locator('.notes-list-meta')).toContainText(
@@ -451,7 +457,8 @@ test('20 slots, draft preservation, edit/share at cap and delete to free a slot'
     .getByRole('textbox', { name: 'Note content', exact: true })
     .fill('Edited at capacity')
   await page.getByRole('button', { name: 'Save note', exact: true }).click()
-  await expect(page.locator('.notes-editor-state')).toHaveText(/^Saved\.?$/)
+  await expectNoteSaved(page)
+  await page.locator('.notes-list .note-card-open').click()
   await page.getByRole('button', { name: 'Share note', exact: true }).click()
   await page
     .locator('.share-note-dialog')
@@ -480,7 +487,7 @@ test('20 slots, draft preservation, edit/share at cap and delete to free a slot'
   await expect(page.locator('.notes-list-meta')).toContainText(
     '19 / 20 notes saved',
   )
-  await page.getByRole('button', { name: '+ New note' }).click()
+  await page.getByRole('button', { name: 'Take a note' }).click()
   await page
     .getByRole('textbox', { name: 'Note content', exact: true })
     .fill('Replacement thought')
@@ -645,7 +652,7 @@ test('Google popup sign-in saves and reopens the same private library', async ({
   await expect(page.locator('.notes-list-meta')).toContainText(
     '0 / 20 notes saved',
   )
-  await page.getByRole('button', { name: '+ New note' }).click()
+  await page.getByRole('button', { name: 'Take a note' }).click()
   await page
     .getByLabel('Note title', { exact: true })
     .fill(`${provider} thought`)
