@@ -136,6 +136,13 @@ test('profile and note cards work on desktop and phones', async ({
   await profile.click()
   await panel.getByRole('button', { name: 'Saved notes' }).click()
   await expect(page).toHaveURL(/\/saved$/)
+  const toolbar = page.locator('.notes-toolbar')
+  const search = toolbar.getByRole('searchbox', { name: 'Search loaded notes' })
+  const add = toolbar.getByRole('button', { name: 'Add note', exact: true })
+  await expect(search).toBeVisible()
+  await expect(
+    toolbar.getByRole('button', { name: 'Refresh notes' }),
+  ).toBeVisible()
   for (const [title, content, colour] of [
     [
       'Classroom ideas',
@@ -144,10 +151,23 @@ test('profile and note cards work on desktop and phones', async ({
     ],
     ['Weekend plans', 'Bring a notebook and pick a spot by the window.', 'Sky'],
   ]) {
-    await page.getByRole('button', { name: 'Take a note' }).click()
+    await add.click()
     await page.getByLabel('Note title', { exact: true }).fill(title)
-    await page.getByRole('textbox', { name: 'Note content' }).fill(content)
+    const editor = page.getByRole('textbox', { name: 'Note content' })
+    await editor.fill(content)
+    const original = await editor.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    )
     await page.getByRole('button', { name: colour, exact: true }).click()
+    const dialog = page.locator('.note-editor-dialog')
+    await expect(editor).not.toHaveCSS('background-color', original)
+    const selected = await dialog.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    )
+    await expect(editor).toHaveCSS('background-color', selected)
+    await expect(
+      dialog.getByRole('group', { name: 'Text formatting' }),
+    ).toHaveCSS('background-color', selected)
     await page.getByRole('button', { name: 'Save note', exact: true }).click()
     await expectNoteSaved(page)
     await assertLayout(page)
@@ -160,6 +180,10 @@ test('profile and note cards work on desktop and phones', async ({
   await expect(cards.first()).toContainText('Classroom ideas')
   await expect(cards.first()).toHaveAttribute('data-note-colour', 'sage')
   await expect(cards.nth(1)).toHaveAttribute('data-note-colour', 'sky')
+  await search.fill('weekend')
+  await expect(cards).toHaveCount(1)
+  await search.clear()
+  await expect(cards).toHaveCount(2)
   await page.getByRole('button', { name: 'List view' }).click()
   await expect(page.getByRole('button', { name: 'List view' })).toHaveAttribute(
     'aria-pressed',
@@ -357,7 +381,7 @@ test('lists, unsaved edits and concurrent changes are recoverable', async ({
   await page.goto('/saved')
   await page.getByRole('button', { name: 'Log in or create account' }).click()
   await signUp(page, `conflict-${randomUUID()}@textbridge.invalid`)
-  await page.getByRole('button', { name: 'Take a note' }).click()
+  await page.getByRole('button', { name: 'Add note' }).click()
   await page.getByLabel('Note title', { exact: true }).fill('Shared draft')
   const editor = page.getByRole('textbox', {
     name: 'Note content',
@@ -446,7 +470,7 @@ test('20 slots, draft preservation, edit/share at cap and delete to free a slot'
   await expect(page.locator('.notes-list-meta')).toContainText(
     '20 / 20 notes saved',
   )
-  await expect(page.getByRole('button', { name: 'Take a note' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Add note' })).toBeDisabled()
   await page.getByLabel('Search loaded notes').fill('Note 20')
   await expect(page.locator('.notes-list li')).toHaveCount(1)
   await expect(page.locator('.notes-list-meta')).toContainText(
@@ -487,7 +511,7 @@ test('20 slots, draft preservation, edit/share at cap and delete to free a slot'
   await expect(page.locator('.notes-list-meta')).toContainText(
     '19 / 20 notes saved',
   )
-  await page.getByRole('button', { name: 'Take a note' }).click()
+  await page.getByRole('button', { name: 'Add note' }).click()
   await page
     .getByRole('textbox', { name: 'Note content', exact: true })
     .fill('Replacement thought')
@@ -652,7 +676,7 @@ test('Google popup sign-in saves and reopens the same private library', async ({
   await expect(page.locator('.notes-list-meta')).toContainText(
     '0 / 20 notes saved',
   )
-  await page.getByRole('button', { name: 'Take a note' }).click()
+  await page.getByRole('button', { name: 'Add note' }).click()
   await page
     .getByLabel('Note title', { exact: true })
     .fill(`${provider} thought`)

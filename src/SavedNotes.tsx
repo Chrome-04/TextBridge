@@ -5,7 +5,13 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useNotesAccount } from './NotesAccount'
 import { notesAreLocal, canUseNotes } from './firebase-session'
 import { NOTE_COLOURS, DEFAULT_NOTE_STYLE, type NoteStyle } from './note-style'
-import { PinIcon, GridIcon, ListIcon, SearchIcon } from './NoteIcons'
+import {
+  PinIcon,
+  GridIcon,
+  ListIcon,
+  SearchIcon,
+  RefreshIcon,
+} from './NoteIcons'
 import {
   documentFromText,
   MAX_NOTE_TEXT,
@@ -862,32 +868,7 @@ function NotesLibrary({
         className="notes-sidebar notes-library"
         aria-label="Saved notes library"
       >
-        <button
-          type="button"
-          className="notes-compose"
-          aria-label="Take a note"
-          aria-haspopup="dialog"
-          disabled={loading || total === null || total >= MAX_SAVED_NOTES}
-          onClick={() => {
-            if (!confirmLeave()) return
-            selectionRequest.current++
-            setLoading(false)
-            setSaveNotice('')
-            dirty.current = false
-            setDraft({
-              id: newNoteId(uid),
-              ...DEFAULT_NOTE_STYLE,
-              title: '',
-              document: documentFromText(''),
-              revision: null,
-            })
-            setOpening((n) => n + 1)
-          }}
-        >
-          <span>Take a note…</span>
-          <span aria-hidden="true">+</span>
-        </button>
-        <div className="notes-search-row">
+        <div className="notes-toolbar">
           <div className="notes-search-field">
             <SearchIcon />
             <label htmlFor="notes-search" className="sr-only">
@@ -896,33 +877,69 @@ function NotesLibrary({
             <input
               id="notes-search"
               type="search"
-              placeholder="Search your notes…"
+              placeholder="Search notes"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <div
-            className="notes-view-toggle"
-            role="group"
-            aria-label="Notes layout"
-          >
-            <button
-              type="button"
-              aria-label="Grid view"
-              title="Grid view"
-              aria-pressed={layout === 'grid'}
-              onClick={() => setLayout('grid')}
+          <div className="notes-toolbar-actions">
+            <div
+              className="notes-view-toggle"
+              role="group"
+              aria-label="Notes layout"
             >
-              <GridIcon />
+              <button
+                type="button"
+                aria-label="Grid view"
+                title="Grid view"
+                aria-pressed={layout === 'grid'}
+                onClick={() => setLayout('grid')}
+              >
+                <GridIcon />
+              </button>
+              <button
+                type="button"
+                aria-label="List view"
+                title="List view"
+                aria-pressed={layout === 'list'}
+                onClick={() => setLayout('list')}
+              >
+                <ListIcon />
+              </button>
+            </div>
+            <button
+              className="notes-refresh"
+              type="button"
+              aria-label="Refresh notes"
+              title="Refresh notes"
+              disabled={loading}
+              onClick={() => void refresh()}
+            >
+              <RefreshIcon />
             </button>
             <button
               type="button"
-              aria-label="List view"
-              title="List view"
-              aria-pressed={layout === 'list'}
-              onClick={() => setLayout('list')}
+              className="primary-button notes-add-button"
+              aria-haspopup="dialog"
+              disabled={loading || total === null || total >= MAX_SAVED_NOTES}
+              onClick={() => {
+                if (!confirmLeave()) return
+                selectionRequest.current++
+                setLoading(false)
+                setSaveNotice('')
+                dirty.current = false
+                setDraft({
+                  id: newNoteId(uid),
+                  ...DEFAULT_NOTE_STYLE,
+                  title: '',
+                  document: documentFromText(''),
+                  revision: null,
+                })
+                setOpening((n) => n + 1)
+              }}
             >
-              <ListIcon />
+              <span aria-hidden="true">+</span>
+              Add note
             </button>
           </div>
         </div>
@@ -937,13 +954,6 @@ function NotesLibrary({
               {saveNotice}
             </span>
           </div>
-          <button
-            className="text-button"
-            disabled={loading}
-            onClick={() => void refresh()}
-          >
-            Refresh notes
-          </button>
         </div>
         {total !== null && total >= MAX_SAVED_NOTES && (
           <p className="size-hint">
@@ -1092,29 +1102,27 @@ export default function SavedNotes({ onShared }: { onShared: () => void }) {
   return (
     <>
       <div className="intro notes-intro">
-        <p className="eyebrow">A place to keep things</p>
-        <h1>Saved notes.</h1>
+        <h1>Saved notes</h1>
         <p>
           {user
-            ? 'Your words, kept for later. Share a temporary copy whenever you need.'
+            ? 'Keep text for later and share a temporary copy when you need it.'
             : 'Save a thought now. Find it on your next device.'}
         </p>
       </div>
-      {notesAreLocal && (
-        <p className="notes-local">
-          Local preview · notes use Firebase Auth and Firestore emulators on
-          this computer.
-        </p>
-      )}
-      {!ready ? (
-        <p role="status">Checking your account…</p>
-      ) : user && canUseNotes(user) ? (
-        <>
+      <div className="notes-page-meta">
+        {notesAreLocal && (
+          <p className="notes-local">Local preview · test accounts and notes</p>
+        )}
+        {user && canUseNotes(user) && (
           <p className="notes-account-label">
             Signed in as <span>{user.email}</span>
           </p>
-          <NotesLibrary key={user.uid} uid={user.uid} onShared={onShared} />
-        </>
+        )}
+      </div>
+      {!ready ? (
+        <p role="status">Checking your account…</p>
+      ) : user && canUseNotes(user) ? (
+        <NotesLibrary key={user.uid} uid={user.uid} onShared={onShared} />
       ) : (
         <section className="card notes-signin">
           <span className="notes-welcome-icon" aria-hidden="true">

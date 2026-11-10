@@ -143,7 +143,7 @@ tokens. Keep the previously required Supabase live configuration and cleanup job
    still work, including expiry and the share count.
 2. Type a draft on Send, click **Save to Notes**, and create an account. Signup signs you in immediately without email verification. Confirm
    the success message and open the new note.
-3. Open **Take a note** to create a new note, or open an existing card to edit it.
+3. Open **Add note** to create a new note, or open an existing card to edit it.
    Try bold, italic, lists, emoji, and a colour. **Save note** returns you to the
    board once Firestore confirms the save. Pin the card to keep it near the top.
 4. Log into the same account on another device. Use the header bookmark and refresh the list.
