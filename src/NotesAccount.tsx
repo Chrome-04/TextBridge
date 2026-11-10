@@ -10,7 +10,6 @@ import {
   onIdTokenChanged,
   signInWithPopup,
   GoogleAuthProvider,
-  OAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -111,23 +110,15 @@ function AccountDialog({
     setPassword('')
     setConfirm('')
   }
-  async function social(provider: 'google' | 'apple') {
+  async function googleSignIn() {
     if (busy) return
     setBusy(true)
     setError('')
     setMessage('')
     try {
       const { auth } = firebaseSession()
-      const oauth =
-        provider === 'google'
-          ? new GoogleAuthProvider()
-          : new OAuthProvider('apple.com')
-      if (provider === 'google')
-        oauth.setCustomParameters({ prompt: 'select_account' })
-      else {
-        oauth.addScope('email')
-        oauth.addScope('name')
-      }
+      const oauth = new GoogleAuthProvider()
+      oauth.setCustomParameters({ prompt: 'select_account' })
       // Invoke the popup immediately from this click; never redirect away from an unsaved draft.
       const credential = await withAuthOperation(() =>
         signInWithPopup(auth, oauth),
@@ -185,31 +176,12 @@ function AccountDialog({
               type="button"
               className="secondary-button provider-google"
               disabled={busy}
-              onClick={() => void social('google')}
+              onClick={() => void googleSignIn()}
             >
               <span className="provider-logo" aria-hidden="true">
                 <img src="/icons/google.png" width="40" height="40" alt="" />
               </span>
               <span>Continue with Google</span>
-            </button>
-            <button
-              type="button"
-              className="secondary-button provider-apple"
-              disabled={busy}
-              onClick={() => void social('apple')}
-            >
-              <span className="provider-logo" aria-hidden="true">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="currentColor"
-                  focusable="false"
-                >
-                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.46 7.59 9 7.31c1.35.07 2.29.77 3.08.82 1.18-.24 2.31-.96 3.57-.87 1.51.12 2.64.72 3.39 1.8-3.11 1.87-2.37 5.98.48 7.13-.57 1.5-1.31 2.99-2.48 4.1l.01-.01ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z" />
-                </svg>
-              </span>
-              <span>Continue with Apple</span>
             </button>
           </div>
           <p className="account-divider">or use your email</p>

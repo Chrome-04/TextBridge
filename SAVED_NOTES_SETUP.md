@@ -1,6 +1,6 @@
 # Saved notes: manual setup and deployment
 
-The website has Google, Apple, email/password accounts and a private text notebook with 20 notes per account. See AUTH_SETUP.md for provider configuration and NOTE_LIMIT_SETUP.md before upgrading an existing notes database. Nothing
+The website has Google and email/password accounts and a private text notebook with 20 notes per account. See AUTH_SETUP.md for provider configuration and NOTE_LIMIT_SETUP.md before upgrading an existing notes database. Nothing
 in this feature setup has been deployed by the assistant. Your existing public
 version stays as it is until you complete the steps below.
 
@@ -10,7 +10,7 @@ version stays as it is until you complete the steps below.
 - **Tiptap**: editable document formatting: bold, italic, underline, lists, undo,
   redo, and a small emoji picker. Text is validated as document JSON; shared text
   never becomes HTML.
-- **Firebase Authentication**: Google/Apple sign-in, email/password signup, login, logout, password reset.
+- **Firebase Authentication**: Google sign-in, email/password signup, login, logout, password reset.
   Anonymous Authentication remains available for visitors who only share text.
 - **Cloud Firestore**: private notes at `users/{Firebase UID}/notes/{note ID}`.
   Owner rules restrict reads and writes to that account; anonymous users cannot
@@ -62,7 +62,7 @@ In the [Firebase console](https://console.firebase.google.com/), select the
    `textbridge-8c8a4.web.app` is allowed. Add your own custom hostname if you use one.
 5. Under **Templates**, review the password-reset email and sender display name.
 
-Google and Apple require their own provider setup; see AUTH_SETUP.md. Phone/SMS is not used. No new administrator key is required in the web app.
+Google requires its own provider setup; see AUTH_SETUP.md. Phone/SMS is not used. No new administrator key is required in the web app.
 The UI requests at least eight password characters; stronger Firebase password
 policies may add requirements. Accounts use browser session persistence, so always
 log out explicitly on shared computers, especially if the browser restores tabs.

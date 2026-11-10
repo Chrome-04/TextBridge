@@ -622,10 +622,6 @@
   max-width: none;
   flex: 0 0 40px;
 }
-.provider-logo svg {
-  display: block;
-  flex-shrink: 0;
-}
 @media (forced-colors: active) {
   .provider-google .provider-logo {
     forced-color-adjust: none;

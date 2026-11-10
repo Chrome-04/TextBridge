@@ -14,6 +14,9 @@ async function signUp(page: Page, email: string) {
   await dialog
     .getByRole('button', { name: 'New here? Create an account' })
     .click()
+  await expect(
+    dialog.getByRole('button', { name: 'Continue with Apple' }),
+  ).toHaveCount(0)
   await dialog.getByLabel('Email', { exact: true }).fill(email)
   await dialog.getByLabel('Password', { exact: true }).fill(password)
   await dialog.getByLabel('Confirm password').fill(password)
@@ -400,13 +403,17 @@ test('immediate email signup, password reset and cancelled provider popup preser
     .fill('Keep this while I sign up')
   await page.getByRole('button', { name: 'Save to Notes', exact: true }).click()
   let dialog = page.getByRole('dialog')
-  for (const name of ['Google', 'Apple'])
-    await expect(
-      dialog.getByRole('button', { name: `Continue with ${name}` }),
-    ).toBeVisible()
+  await expect(
+    dialog.getByRole('button', { name: 'Continue with Google' }),
+  ).toBeVisible()
+  await expect(
+    dialog.getByRole('button', { name: 'Continue with Apple' }),
+  ).toHaveCount(0)
   const popupEvent = page.waitForEvent('popup')
   await dialog.getByRole('button', { name: 'Continue with Google' }).click()
   const popup = await popupEvent
+  await popup.waitForURL(/127\.0\.0\.1:9099\/emulator\/auth\/handler/)
+  await popup.waitForLoadState('load')
   await popup.close()
   await expect(dialog.getByRole('alert')).toContainText('cancelled', {
     timeout: 20_000,
@@ -497,80 +504,73 @@ test('immediate email signup, password reset and cancelled provider popup preser
   await assertLayout(page)
 })
 
-test('Google and Apple popup sign-in save and reopen the same private library', async ({
+test('Google popup sign-in saves and reopens the same private library', async ({
   page,
 }, info) => {
   await page.goto('/saved')
-  for (const provider of ['Google', 'Apple']) {
-    const email = `provider-${randomUUID()}@textbridge.invalid`
-    await page.getByRole('button', { name: 'Log in or create account' }).click()
-    const dialog = page.getByRole('dialog')
-    const accessibility = await new AxeBuilder({ page })
-      .include('.account-dialog')
-      .analyze()
-    expect(accessibility.violations.map((violation) => violation.id)).toEqual(
-      [],
-    )
-    await page.screenshot({
-      path: `artifacts/signin-${info.project.name}.png`,
-      fullPage: true,
+  const provider = 'Google'
+  const email = `provider-${randomUUID()}@textbridge.invalid`
+  await page.getByRole('button', { name: 'Log in or create account' }).click()
+  const dialog = page.getByRole('dialog')
+  const accessibility = await new AxeBuilder({ page })
+    .include('.account-dialog')
+    .analyze()
+  expect(accessibility.violations.map((violation) => violation.id)).toEqual([])
+  await page.screenshot({
+    path: `artifacts/signin-${info.project.name}.png`,
+    fullPage: true,
+  })
+  const open = page.waitForEvent('popup')
+  await dialog
+    .getByRole('button', { name: `Continue with ${provider}` })
+    .click()
+  const popup = await open
+  await popup.waitForURL(/127\.0\.0\.1:9099\/emulator\/auth\/handler/)
+  await popup.waitForLoadState('load')
+  await popup.getByText('Add new account', { exact: true }).click()
+  await popup.locator('#email-input').fill(email)
+  await popup.locator('#display-name-input').fill(`Test ${provider}`)
+  await popup
+    .getByRole('button', {
+      name: /Sign in with/,
     })
-    const open = page.waitForEvent('popup')
-    await dialog
-      .getByRole('button', { name: `Continue with ${provider}` })
-      .click()
-    const popup = await open
-    await popup.waitForURL(/127\.0\.0\.1:9099\/emulator\/auth\/handler/)
-    await popup.waitForLoadState('load')
-    await popup.getByText('Add new account', { exact: true }).click()
-    await popup.locator('#email-input').fill(email)
-    await popup.locator('#display-name-input').fill(`Test ${provider}`)
-    await popup
-      .getByRole('button', {
-        name: /Sign in with/,
-      })
-      .click()
-    await expect(dialog).not.toBeVisible()
-    const account = await page.evaluate(async () => {
-      const { firebaseSession } = await import(
-        '/src/firebase-session.ts' /* @vite-ignore */
-      )
-      const user = firebaseSession().auth.currentUser!
-      return { uid: user.uid, token: await user.getIdToken() }
-    })
-    accounts.push(account)
-    await expect(page.locator('.notes-account-label')).toContainText(email)
-    await expect(page.locator('.notes-list-meta')).toContainText(
-      '0 / 20 notes saved',
+    .click()
+  await expect(dialog).not.toBeVisible()
+  const account = await page.evaluate(async () => {
+    const { firebaseSession } = await import(
+      '/src/firebase-session.ts' /* @vite-ignore */
     )
-    await page.getByRole('button', { name: '+ New note' }).click()
-    await page
-      .getByLabel('Note title', { exact: true })
-      .fill(`${provider} thought`)
-    await page
-      .getByRole('textbox', { name: 'Note content', exact: true })
-      .fill('Private provider note')
-    await page.getByRole('button', { name: 'Save note', exact: true }).click()
-    await expect(page.locator('.notes-list-meta')).toContainText(
-      '1 / 20 notes saved',
-    )
-    await logOut(page)
-    await page.getByRole('button', { name: 'Log in or create account' }).click()
-    const reopen = page.waitForEvent('popup')
-    await page
-      .getByRole('button', { name: `Continue with ${provider}` })
-      .click()
-    const returning = await reopen
-    await returning.waitForURL(/127\.0\.0\.1:9099\/emulator\/auth\/handler/)
-    await returning.waitForLoadState('load')
-    await returning.getByText(email, { exact: true }).click()
-    await expect(page.getByRole('dialog')).not.toBeVisible()
-    await expect(page.locator('.notes-list')).toContainText(
-      `${provider} thought`,
-    )
-    await expect(page.locator('.notes-list-meta')).toContainText(
-      '1 / 20 notes saved',
-    )
-    await logOut(page)
-  }
+    const user = firebaseSession().auth.currentUser!
+    return { uid: user.uid, token: await user.getIdToken() }
+  })
+  accounts.push(account)
+  await expect(page.locator('.notes-account-label')).toContainText(email)
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '0 / 20 notes saved',
+  )
+  await page.getByRole('button', { name: '+ New note' }).click()
+  await page
+    .getByLabel('Note title', { exact: true })
+    .fill(`${provider} thought`)
+  await page
+    .getByRole('textbox', { name: 'Note content', exact: true })
+    .fill('Private provider note')
+  await page.getByRole('button', { name: 'Save note', exact: true }).click()
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '1 / 20 notes saved',
+  )
+  await logOut(page)
+  await page.getByRole('button', { name: 'Log in or create account' }).click()
+  const reopen = page.waitForEvent('popup')
+  await page.getByRole('button', { name: `Continue with ${provider}` }).click()
+  const returning = await reopen
+  await returning.waitForURL(/127\.0\.0\.1:9099\/emulator\/auth\/handler/)
+  await returning.waitForLoadState('load')
+  await returning.getByText(email, { exact: true }).click()
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await expect(page.locator('.notes-list')).toContainText(`${provider} thought`)
+  await expect(page.locator('.notes-list-meta')).toContainText(
+    '1 / 20 notes saved',
+  )
+  await logOut(page)
 })

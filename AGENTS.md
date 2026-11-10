@@ -13,7 +13,7 @@
   expense tracker. Local CLI commands must explicitly use demo-textbridge.
 - Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
   OR one file strictly under 20,000,000 bytes. Guest sharing needs no account.
-  The user approved optional Firebase Google/Apple and email/password accounts and private Firestore
+  The user approved optional Firebase Google and email/password accounts and private Firestore
   Saved notes. No payments, 24-hour option, or one-time reads. Download files;
   never embed active content. No Clipboard feature.
 - Generate a code, same-origin /receive#CODE link, and locally rendered QR code.
@@ -212,3 +212,11 @@
   remain usable. Owner-only paths, provider restrictions, and 20-slot quota stay.
 - This change still needs the owner's manual Firestore rules and Hosting redeploy
   for the live website. Do not enable cloud providers or deploy automatically.
+
+## Apple sign-in removed (November 10)
+
+- User explicitly removed Apple login. Offer Google and email/password only, with
+  the existing Google logo, immediate signup, and password reset.
+- No Apple OAuth entry point or button. Do not re-add or enable it without asking.
+  Preserve existing account/note data and legacy owner-rule compatibility.
+- No cloud settings were changed. Publication remains the owner's manual task.

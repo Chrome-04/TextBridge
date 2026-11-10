@@ -145,6 +145,6 @@ stays gated off. Follow [PUBLIC_DEPLOYMENT.md](./PUBLIC_DEPLOYMENT.md).
 This project is separate from the expense tracker. Preserve history and the pnpm
 lockfile. Never commit keys, real user content, runtime files, or database exports.
 
-Saved accounts now support Google, Apple, email/password, and reset links.
+Saved accounts now support Google and email/password, and reset links.
 See [AUTH_SETUP.md](AUTH_SETUP.md) for manual provider setup and
 [NOTE_LIMIT_SETUP.md](NOTE_LIMIT_SETUP.md) for the 20-note limit and safe upgrade.
