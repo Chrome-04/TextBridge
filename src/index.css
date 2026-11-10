@@ -2174,9 +2174,14 @@ footer {
   .receiver-toolbar {
     margin-top: -8px;
   }
+}
+@media (max-width: 1150px) {
   .site-header .nav-link,
-  .site-header .header-mode-link {
+  .site-header .header-mode-link:not(.saved-nav) {
     display: none;
+  }
+  .header-inner {
+    gap: 8px;
   }
   .site-header nav {
     margin-left: auto;
@@ -2426,5 +2431,54 @@ footer {
   }
   .how-steps li {
     padding: 16px 0;
+  }
+}
+
+/* Keep phone content within its column without clipping long text or controls. */
+.page,
+.header-inner,
+.intro,
+.composer,
+.receiver-card {
+  min-width: 0;
+}
+.intro p,
+.size-hint,
+.local-note {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .composer-toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .composer-toolbar .mode-row-compact {
+    min-width: 0;
+  }
+  .field-head {
+    align-items: center;
+  }
+  .form-footer .send-note-actions {
+    gap: 10px;
+  }
+  .send-note-actions .save-to-notes {
+    min-width: 0;
+  }
+  .send-note-actions .primary-button,
+  .send-note-actions .secondary-button {
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+  .intro h1 {
+    font-size: clamp(28px, 8.5vw, 34px);
+    line-height: 1.15;
+  }
+  .intro > p:not(.eyebrow) {
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  .kind-switch .duration {
+    min-height: 44px;
   }
 }

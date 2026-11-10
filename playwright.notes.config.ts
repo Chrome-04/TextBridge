@@ -11,7 +11,7 @@ export default defineConfig({
     {
       name: 'mobile',
       use: {
-        viewport: { width: 390, height: 844 },
+        viewport: { width: 360, height: 800 },
         isMobile: true,
         hasTouch: true,
       },

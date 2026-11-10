@@ -45,7 +45,9 @@ service cloud.firestore {
     }
     function validNote(data) {
       return data.keys().hasAll(['title', 'document', 'text', 'formatVersion', 'revision', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['title', 'document', 'text', 'formatVersion', 'revision', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'document', 'text', 'formatVersion', 'revision', 'createdAt', 'updatedAt', 'colour', 'pinned'])
+        && (!('colour' in data) || data.colour in ['default', 'sage', 'sand', 'peach', 'sky', 'lavender'])
+        && (!('pinned' in data) || data.pinned is bool)
         && data.title is string && data.title.size() > 0 && data.title.size() <= 120
         && data.document is string && data.document.size() > 0 && data.document.size() <= 200000
         && data.text is string && data.text.size() > 0 && data.text.size() <= 50000

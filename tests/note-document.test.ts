@@ -78,3 +78,18 @@ test('oversize and empty notes fail explicitly without silently truncating', () 
     }
   assert.throws(() => validateDocument({ type: 'doc', content: [nested] }))
 })
+
+// Appearance is separate from document content and is validated before persistence.
+test('note appearance defaults old records safely and permits only supported colours and boolean pinning', async () => {
+  const { noteStyle } = await import('../src/note-style.ts')
+  assert.deepEqual(noteStyle({}), { colour: 'default', pinned: false })
+  assert.deepEqual(noteStyle({ colour: 'sage', pinned: true }), {
+    colour: 'sage',
+    pinned: true,
+  })
+  assert.throws(
+    () => noteStyle({ colour: 'url(javascript:alert(1))' }),
+    /unsupported/,
+  )
+  assert.throws(() => noteStyle({ pinned: 'false' }), /unsupported/)
+})

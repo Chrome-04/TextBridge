@@ -1,6 +1,6 @@
 # Saved notes: manual setup and deployment
 
-The website has Google and email/password accounts and a private text notebook with 20 notes per account. See AUTH_SETUP.md for provider configuration and NOTE_LIMIT_SETUP.md before upgrading an existing notes database. Nothing
+The website has Google and email/password accounts and a private text notebook with 20 notes per account. The header bookmark opens the notebook. After signing in, the profile avatar shows your account details, Saved notes, and Log out. See AUTH_SETUP.md for provider configuration and NOTE_LIMIT_SETUP.md before upgrading an existing notes database. Nothing
 in this feature setup has been deployed by the assistant. Your existing public
 version stays as it is until you complete the steps below.
 
@@ -104,8 +104,12 @@ untargeted `firebase deploy` using the old `firebase.json`.
 The checked-in `firestore.rules` allows only an email/password, Google, or Apple-authenticated owner to
 access their notes, validates fields/sizes/timestamps/revisions, and limits list
 requests to 30 notes, and enforces 20 stored notes through an atomic private quota registry. If notes already exist, follow NOTE_LIMIT_SETUP.md before deploying. All other browser database access remains denied. Index
-exemptions keep the document body, plain text, and title out of automatic indexes;
-the library orders by `updatedAt` and searches already-loaded notes locally.
+exemptions keep the document body, plain text, title, colour, and pin settings out of automatic indexes;
+the library loads notes by `updatedAt`, displays pinned notes first, and searches
+already-loaded notes locally.
+Publish the updated rules before the website so it can save note colours and pins.
+Older notes appear with the default colour and start unpinned. Appearance alone
+requires no data migration.
 
 ## 5. Keep the existing public browser configuration
 
@@ -139,14 +143,14 @@ tokens. Keep the previously required Supabase live configuration and cleanup job
    still work, including expiry and the share count.
 2. Type a draft on Send, click **Save to Notes**, and create an account. Signup signs you in immediately without email verification. Confirm
    the success message and open the new note.
-3. Edit the title and text, try bold/italic/lists/emoji, and click **Save note**.
-4. Log into the same account on another device. Open Saved and refresh its list.
-   Your note should be there with its formatting.
+3. Edit the title and text, try bold/italic/lists/emoji, choose a colour, and click **Save note**. Pin the card to keep it near the top.
+4. Log into the same account on another device. Use the header bookmark and refresh the list.
+   Your note should be there with its formatting, colour, and pin setting.
 5. Choose **Share note**, select 5 or 10 minutes, and generate a code. Receive it
    on another device: only the plain text should arrive. The saved note remains.
 6. On the received text, use **Save to Notes** to keep a private copy in the
    receiving account. Saving is optional; merely receiving text does not save it.
-7. Log out. The private library must disappear immediately. A different account
+7. Open the profile avatar and choose **Log out**. The private library must disappear immediately. A different account
    must have its own separate library.
 8. Try password reset with your own real email. Check the email and reset link.
 9. Keep Firebase App Check monitoring enabled. If you choose to enforce App Check

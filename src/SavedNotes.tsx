@@ -4,6 +4,8 @@ import StarterKit from '@tiptap/starter-kit'
 import { QRCodeSVG } from 'qrcode.react'
 import { useNotesAccount } from './NotesAccount'
 import { notesAreLocal, canUseNotes } from './firebase-session'
+import { NOTE_COLOURS, DEFAULT_NOTE_STYLE, type NoteStyle } from './note-style'
+import { PinIcon, GridIcon, ListIcon, SearchIcon } from './NoteIcons'
 import {
   documentFromText,
   MAX_NOTE_TEXT,
@@ -26,7 +28,7 @@ import {
 import { withShareStore } from './share-client'
 import { type Duration, type SharedNote } from './demo-store'
 
-type Draft = {
+type Draft = NoteStyle & {
   id: string
   title: string
   document: NoteNode
@@ -391,14 +393,26 @@ function NoteEditor({
   onDeleted,
   onDirty,
   onShared,
+  onClose,
 }: {
   initial: Draft
+  onClose: () => void
   uid: string
   onSaved: (note: SavedNote) => void
   onDeleted: () => void
   onDirty: (dirty: boolean) => void
   onShared: () => void
 }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const element = dialog.current!
+    element.showModal()
+    return () => element.close()
+  }, [])
+  const [appearance, setAppearance] = useState<NoteStyle>({
+    colour: initial.colour,
+    pinned: initial.pinned,
+  })
   const [title, setTitle] = useState(initial.title)
   const [document, setDocument] = useState<unknown>(initial.document)
   const [revision, setRevision] = useState(initial.revision)
@@ -421,13 +435,30 @@ function NoteEditor({
   const [deleting, setDeleting] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [reload, setReload] = useState(0)
-  const baseline = useRef(JSON.stringify([initial.title, initial.document]))
-  const dirty = JSON.stringify([title, document]) !== baseline.current
+  const baseline = useRef(
+    JSON.stringify([
+      initial.title,
+      initial.document,
+      initial.colour,
+      initial.pinned,
+    ]),
+  )
+  const dirty =
+    JSON.stringify([title, document, appearance.colour, appearance.pinned]) !==
+    baseline.current
   const characters = plainText(document as NoteNode).length
   useEffect(() => {
     onDirty(dirty || busy)
     return () => onDirty(false)
-  }, [dirty, busy, title, document, onDirty])
+  }, [
+    dirty,
+    busy,
+    title,
+    document,
+    appearance.colour,
+    appearance.pinned,
+    onDirty,
+  ])
   async function persist(copy = false) {
     if (busyRef.current) return
     busyRef.current = true
@@ -444,12 +475,18 @@ function NoteEditor({
         payload.title,
         document,
         copy ? null : revision,
+        appearance,
       )
       setId(result.id)
       setTitle(result.title)
       setRevision(result.revision)
       setSaved(result)
-      baseline.current = JSON.stringify([result.title, document])
+      baseline.current = JSON.stringify([
+        result.title,
+        document,
+        result.colour,
+        result.pinned,
+      ])
       setStatus('Saved.')
       setConflict(false)
       onSaved(result)
@@ -461,180 +498,257 @@ function NoteEditor({
       busyRef.current = false
     }
   }
+  function closeEditor() {
+    if (
+      busy ||
+      (dirty && !window.confirm('Discard unsaved edits and close this note?'))
+    )
+      return
+    onDirty(false)
+    onClose()
+  }
   return (
-    <section className="notes-editor" aria-label="Note editor">
-      <div className="notes-editor-top">
-        <span className="notes-editor-state" role="status">
-          {busy
-            ? 'Working…'
-            : dirty
-              ? 'Unsaved changes'
-              : revision === null
-                ? 'New note'
-                : status || 'Saved'}
-        </span>
-        <div className="notes-actions">
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={busy || !saved || dirty}
-            onClick={() => setSharing(true)}
-          >
-            Share note
-          </button>
-          <button
-            type="button"
-            className="primary-button"
-            disabled={busy || (!dirty && revision !== null)}
-            onClick={() => void persist()}
-          >
-            {busy ? 'Please wait…' : 'Save note'}
-          </button>
-        </div>
-      </div>
-      <label className="sr-only" htmlFor="note-heading">
-        Note title
-      </label>
-      <input
-        className="notes-title"
-        id="note-heading"
-        placeholder="Untitled note"
-        maxLength={MAX_NOTE_TITLE}
-        value={title}
-        disabled={busy}
-        onChange={(event) => {
-          setTitle(event.target.value)
-          setStatus('')
-        }}
-      />
-      <RichText
-        key={reload}
-        initial={document as NoteNode}
-        disabled={busy}
-        onChange={(value) => {
-          setDocument(value)
-          setStatus('')
-        }}
-      />
-      <div className="notes-editor-bottom">
-        <p className={characters > MAX_NOTE_TEXT ? 'field-error' : 'size-hint'}>
-          {characters.toLocaleString()} / 50,000 characters · Save your edits
-          before sharing.
-        </p>
-        {revision !== null && (
-          <button
-            type="button"
-            className="text-button danger-button"
-            disabled={busy}
-            onClick={() => setDeleting(!deleting)}
-          >
-            Delete note
-          </button>
-        )}
-      </div>
-      {error && (
-        <p className="field-error" role="alert">
-          {error}
-        </p>
-      )}
-      {conflict && (
-        <div className="notes-actions">
-          <button
-            className="secondary-button"
-            disabled={busy}
-            onClick={async () => {
-              if (
-                dirty &&
-                !window.confirm(
-                  'Discard your unsaved edits and open the latest saved version?',
-                )
-              )
-                return
-              setBusy(true)
-              setError('')
-              try {
-                const latest = await loadNote(uid, id)
-                baseline.current = JSON.stringify([
-                  latest.title,
-                  latest.document,
-                ])
-                setTitle(latest.title)
-                setDocument(latest.document)
-                setRevision(latest.revision)
-                setSaved(latest)
-                setReload((n) => n + 1)
-                setConflict(false)
-                onSaved(latest)
-              } catch (failure) {
-                setError(notesError(failure))
-              } finally {
-                setBusy(false)
-              }
-            }}
-          >
-            Open latest version
-          </button>
-          <button
-            className="secondary-button"
-            disabled={busy}
-            onClick={() => void persist(true)}
-          >
-            Save edits as new note
-          </button>
-        </div>
-      )}
-      {deleting && (
-        <div
-          className="notes-delete-confirm"
-          role="group"
-          aria-label="Confirm note deletion"
-        >
-          <p>
-            Delete this saved note permanently? Existing temporary sharing codes
-            will remain active until they expire.
-          </p>
+    <dialog
+      ref={dialog}
+      className="note-editor-dialog"
+      data-note-colour={appearance.colour}
+      aria-labelledby="note-editor-dialog-title"
+      onCancel={(event) => {
+        event.preventDefault()
+        closeEditor()
+      }}
+    >
+      <section className="notes-editor" aria-label="Note editor">
+        <h2 className="sr-only" id="note-editor-dialog-title">
+          {revision === null ? 'Create a note' : 'Edit your note'}
+        </h2>
+        <div className="notes-editor-top">
+          <span className="notes-editor-state" role="status">
+            {busy
+              ? 'Working…'
+              : dirty
+                ? 'Unsaved changes'
+                : revision === null
+                  ? 'New note'
+                  : status || 'Saved'}
+          </span>
           <div className="notes-actions">
             <button
-              className="secondary-button danger-button"
+              type="button"
+              className="secondary-button"
+              disabled={busy || !saved || dirty}
+              onClick={() => setSharing(true)}
+            >
+              Share note
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={busy || (!dirty && revision !== null)}
+              onClick={() => void persist()}
+            >
+              {busy ? 'Please wait…' : 'Save note'}
+            </button>
+            <button
+              type="button"
+              className="dialog-close"
+              aria-label="Close note"
+              disabled={busy}
+              onClick={closeEditor}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <label className="sr-only" htmlFor="note-heading">
+          Note title
+        </label>
+        <input
+          className="notes-title"
+          id="note-heading"
+          placeholder="Untitled note"
+          maxLength={MAX_NOTE_TITLE}
+          value={title}
+          disabled={busy}
+          onChange={(event) => {
+            setTitle(event.target.value)
+            setStatus('')
+          }}
+        />
+        <div className="note-appearance">
+          <div role="group" aria-label="Note colour" className="note-colours">
+            {NOTE_COLOURS.map((colour) => (
+              <button
+                key={colour.value}
+                type="button"
+                className="note-swatch"
+                data-note-colour={colour.value}
+                aria-label={colour.label}
+                title={colour.label}
+                aria-pressed={appearance.colour === colour.value}
+                disabled={busy}
+                onClick={() => {
+                  setAppearance({ ...appearance, colour: colour.value })
+                  setStatus('')
+                }}
+              >
+                <span aria-hidden="true">
+                  {appearance.colour === colour.value ? '✓' : ''}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            className="note-pin-toggle"
+            type="button"
+            aria-pressed={appearance.pinned}
+            disabled={busy}
+            onClick={() => {
+              setAppearance({ ...appearance, pinned: !appearance.pinned })
+              setStatus('')
+            }}
+          >
+            <PinIcon />
+            {appearance.pinned ? 'Pinned' : 'Pin note'}
+          </button>
+        </div>
+        <RichText
+          key={reload}
+          initial={document as NoteNode}
+          disabled={busy}
+          onChange={(value) => {
+            setDocument(value)
+            setStatus('')
+          }}
+        />
+        <div className="notes-editor-bottom">
+          <p
+            className={characters > MAX_NOTE_TEXT ? 'field-error' : 'size-hint'}
+          >
+            {characters.toLocaleString()} / 50,000 characters · Save your edits
+            before sharing.
+          </p>
+          {revision !== null && (
+            <button
+              type="button"
+              className="text-button danger-button"
+              disabled={busy}
+              onClick={() => setDeleting(!deleting)}
+            >
+              Delete note
+            </button>
+          )}
+        </div>
+        {error && (
+          <p className="field-error" role="alert">
+            {error}
+          </p>
+        )}
+        {conflict && (
+          <div className="notes-actions">
+            <button
+              className="secondary-button"
               disabled={busy}
               onClick={async () => {
-                if (busyRef.current || revision === null) return
-                busyRef.current = true
+                if (
+                  dirty &&
+                  !window.confirm(
+                    'Discard your unsaved edits and open the latest saved version?',
+                  )
+                )
+                  return
                 setBusy(true)
                 setError('')
                 try {
-                  await removeNote(uid, id, revision)
-                  onDirty(false)
-                  onDeleted()
+                  const latest = await loadNote(uid, id)
+                  baseline.current = JSON.stringify([
+                    latest.title,
+                    latest.document,
+                    latest.colour,
+                    latest.pinned,
+                  ])
+                  setAppearance({
+                    colour: latest.colour,
+                    pinned: latest.pinned,
+                  })
+                  setTitle(latest.title)
+                  setDocument(latest.document)
+                  setRevision(latest.revision)
+                  setSaved(latest)
+                  setReload((n) => n + 1)
+                  setConflict(false)
+                  onSaved(latest)
                 } catch (failure) {
                   setError(notesError(failure))
-                  setConflict(failure instanceof NoteConflict)
                 } finally {
                   setBusy(false)
-                  busyRef.current = false
                 }
               }}
             >
-              Yes, delete note
+              Open latest version
             </button>
             <button
               className="secondary-button"
               disabled={busy}
-              onClick={() => setDeleting(false)}
+              onClick={() => void persist(true)}
             >
-              Cancel
+              Save edits as new note
             </button>
           </div>
-        </div>
-      )}
-      {sharing && saved && (
-        <ShareNoteDialog
-          note={saved}
-          onClose={() => setSharing(false)}
-          onShared={onShared}
-        />
-      )}
-    </section>
+        )}
+        {deleting && (
+          <div
+            className="notes-delete-confirm"
+            role="group"
+            aria-label="Confirm note deletion"
+          >
+            <p>
+              Delete this saved note permanently? Existing temporary sharing
+              codes will remain active until they expire.
+            </p>
+            <div className="notes-actions">
+              <button
+                className="secondary-button danger-button"
+                disabled={busy}
+                onClick={async () => {
+                  if (busyRef.current || revision === null) return
+                  busyRef.current = true
+                  setBusy(true)
+                  setError('')
+                  try {
+                    await removeNote(uid, id, revision)
+                    onDirty(false)
+                    onDeleted()
+                  } catch (failure) {
+                    setError(notesError(failure))
+                    setConflict(failure instanceof NoteConflict)
+                  } finally {
+                    setBusy(false)
+                    busyRef.current = false
+                  }
+                }}
+              >
+                Yes, delete note
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => setDeleting(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        {sharing && saved && (
+          <ShareNoteDialog
+            note={saved}
+            onClose={() => setSharing(false)}
+            onShared={onShared}
+          />
+        )}
+      </section>
+    </dialog>
   )
 }
 
@@ -653,6 +767,8 @@ function NotesLibrary({
   const [opening, setOpening] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid')
+  const [pinning, setPinning] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const dirty = useRef(false)
@@ -747,16 +863,27 @@ function NotesLibrary({
   useEffect(() => {
     if (requestedNote) void select(requestedNote)
   }, [requestedNote])
-  const visible = notes.filter((note) =>
-    `${note.title}\n${note.text}`
-      .toLocaleLowerCase()
-      .includes(search.toLocaleLowerCase()),
-  )
+  const visible = [...notes]
+    .sort(
+      (a, b) =>
+        Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt,
+    )
+    .filter((note) =>
+      `${note.title}\n${note.text}`
+        .toLocaleLowerCase()
+        .includes(search.toLocaleLowerCase()),
+    )
   return (
-    <div className="notes-workspace card">
-      <aside className="notes-sidebar" aria-label="Saved notes library">
+    <div className="notes-workspace">
+      <section
+        className="notes-sidebar notes-library"
+        aria-label="Saved notes library"
+      >
         <div className="notes-sidebar-head">
-          <h2>Your notes</h2>
+          <div>
+            <h2>Your notes</h2>
+            <p className="muted notes-library-hint">Make room for an idea.</p>
+          </div>
           <button
             type="button"
             className="primary-button"
@@ -768,6 +895,7 @@ function NotesLibrary({
               dirty.current = false
               setDraft({
                 id: newNoteId(uid),
+                ...DEFAULT_NOTE_STYLE,
                 title: '',
                 document: documentFromText(''),
                 revision: null,
@@ -778,16 +906,45 @@ function NotesLibrary({
             + New note
           </button>
         </div>
-        <label htmlFor="notes-search" className="sr-only">
-          Search loaded notes
-        </label>
-        <input
-          id="notes-search"
-          type="search"
-          placeholder="Search your notes…"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+        <div className="notes-search-row">
+          <div className="notes-search-field">
+            <SearchIcon />
+            <label htmlFor="notes-search" className="sr-only">
+              Search loaded notes
+            </label>
+            <input
+              id="notes-search"
+              type="search"
+              placeholder="Search your notes…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <div
+            className="notes-view-toggle"
+            role="group"
+            aria-label="Notes layout"
+          >
+            <button
+              type="button"
+              aria-label="Grid view"
+              title="Grid view"
+              aria-pressed={layout === 'grid'}
+              onClick={() => setLayout('grid')}
+            >
+              <GridIcon />
+            </button>
+            <button
+              type="button"
+              aria-label="List view"
+              title="List view"
+              aria-pressed={layout === 'list'}
+              onClick={() => setLayout('list')}
+            >
+              <ListIcon />
+            </button>
+          </div>
+        </div>
         <div className="notes-list-meta">
           <span role="status">
             {total === null
@@ -832,24 +989,64 @@ function NotesLibrary({
         {!!notes.length && !visible.length && (
           <p className="notes-empty">No matching notes in the loaded list.</p>
         )}
-        <ul className="notes-list">
+        <ul className={`notes-list notes-${layout}`}>
           {visible.map((note) => (
-            <li key={note.id}>
+            <li
+              key={note.id}
+              className="saved-note-card"
+              data-note-colour={note.colour}
+              data-pinned={note.pinned ? 'true' : 'false'}
+            >
               <button
-                className={draft?.id === note.id ? 'active' : ''}
+                className="note-card-open"
                 type="button"
-                aria-current={draft?.id === note.id ? 'true' : undefined}
+                aria-label={`Open note: ${note.title}`}
                 onClick={() => void select(note.id)}
               >
                 <strong>{note.title}</strong>
-                <span>{note.text.slice(0, 100)}</span>
+                <span>{note.text.slice(0, 600)}</span>
+              </button>
+              <div className="note-card-foot">
                 <time dateTime={new Date(note.updatedAt).toISOString()}>
                   {new Date(note.updatedAt).toLocaleDateString(undefined, {
                     month: 'short',
                     day: 'numeric',
                   })}
                 </time>
-              </button>
+                <button
+                  className="note-card-pin"
+                  type="button"
+                  aria-label={`${note.pinned ? 'Unpin' : 'Pin'} ${note.title}`}
+                  title={note.pinned ? 'Unpin note' : 'Pin note'}
+                  aria-pressed={note.pinned}
+                  disabled={pinning !== null}
+                  onClick={async () => {
+                    setPinning(note.id)
+                    setError('')
+                    try {
+                      const updated = await saveNote(
+                        uid,
+                        note.id,
+                        note.title,
+                        note.document,
+                        note.revision,
+                        { colour: note.colour, pinned: !note.pinned },
+                      )
+                      setNotes((old) =>
+                        old.map((item) =>
+                          item.id === updated.id ? updated : item,
+                        ),
+                      )
+                    } catch (failure) {
+                      setError(notesError(failure))
+                    } finally {
+                      setPinning(null)
+                    }
+                  }}
+                >
+                  <PinIcon />
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -867,13 +1064,17 @@ function NotesLibrary({
             </p>
           </>
         )}
-      </aside>
-      {draft ? (
+      </section>
+      {draft && (
         <NoteEditor
           key={`${draft.id}:${opening}`}
           initial={draft}
           uid={uid}
           onShared={onShared}
+          onClose={() => {
+            dirty.current = false
+            setDraft(null)
+          }}
           onDirty={setDirty}
           onSaved={(note) => {
             setNotes((old) =>
@@ -891,21 +1092,6 @@ function NotesLibrary({
             void refresh()
           }}
         />
-      ) : (
-        <section className="notes-welcome">
-          <span className="notes-welcome-icon" aria-hidden="true">
-            ▤
-          </span>
-          <h2>Keep a thought.</h2>
-          <p>
-            Notes, snippets, and the words you’ll need later.
-            <br />
-            Choose a note or start a new one.
-          </p>
-          <p className="size-hint">
-            Private to your account · No automatic expiry
-          </p>
-        </section>
       )}
     </div>
   )

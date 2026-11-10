@@ -4,6 +4,8 @@
     { "collectionGroup": "notes", "fieldPath": "document", "indexes": [] },
     { "collectionGroup": "notes", "fieldPath": "text", "indexes": [] },
     { "collectionGroup": "notes", "fieldPath": "title", "indexes": [] },
+    { "collectionGroup": "notes", "fieldPath": "colour", "indexes": [] },
+    { "collectionGroup": "notes", "fieldPath": "pinned", "indexes": [] },
     { "collectionGroup": "noteState", "fieldPath": "noteIds", "indexes": [] }
   ]
 }

@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore'
 import { firebaseSession, notesAreLocal, canUseNotes } from './firebase-session'
 import { notePayload, validateDocument, type NoteNode } from './note-document'
+import { noteStyle, DEFAULT_NOTE_STYLE, type NoteStyle } from './note-style'
 export const MAX_SAVED_NOTES = 20
 export { notesError } from './notes-error'
 
@@ -35,7 +36,7 @@ function owner(uid: string) {
     throw new Error('Please log in again to access your notes.')
   return collection(db(), 'users', uid, 'notes')
 }
-export type SavedNote = {
+export type SavedNote = NoteStyle & {
   id: string
   title: string
   document: NoteNode
@@ -56,6 +57,7 @@ function decode(id: string, data: DocumentData): SavedNote {
   const document = validateDocument(JSON.parse(data.document))
   return {
     id,
+    ...noteStyle(data),
     title: data.title,
     document,
     text: notePayload(data.title, document).text,
@@ -147,6 +149,7 @@ export async function saveNote(
   title: string,
   document: unknown,
   expectedRevision: number | null,
+  appearance?: NoteStyle,
 ) {
   if (!navigator.onLine)
     throw new Error(
@@ -157,21 +160,32 @@ export async function saveNote(
   return runTransaction(db(), async (transaction) => {
     owner(uid)
     const existing = await transaction.get(ref)
+    const previousStyle = existing.exists()
+      ? noteStyle(existing.data())
+      : DEFAULT_NOTE_STYLE
+    const style = appearance ? noteStyle(appearance) : previousStyle
     if (existing.exists()) {
       const data = existing.data()
       // A retry after an uncertain response is idempotent for this draft ID.
-      if (data.title === payload.title && data.document === payload.document)
+      if (
+        data.title === payload.title &&
+        data.document === payload.document &&
+        previousStyle.colour === style.colour &&
+        previousStyle.pinned === style.pinned
+      )
         return decode(id, data)
       if (expectedRevision === null || data.revision !== expectedRevision)
         throw new NoteConflict()
       transaction.update(ref, {
         ...payload,
+        ...style,
         updatedAt: serverTimestamp(),
         revision: data.revision + 1,
       })
       return {
         id,
         ...payload,
+        ...style,
         document: validateDocument(document),
         revision: data.revision + 1,
         updatedAt: Date.now(),
@@ -197,6 +211,7 @@ export async function saveNote(
     })
     transaction.set(ref, {
       ...payload,
+      ...style,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       revision: 1,
@@ -204,6 +219,7 @@ export async function saveNote(
     return {
       id,
       ...payload,
+      ...style,
       document: validateDocument(document),
       revision: 1,
       updatedAt: Date.now(),

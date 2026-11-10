@@ -2,6 +2,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
 import CommentsSection from './CommentsSection'
 import ShareCount from './ShareCount'
+import { BookmarkIcon, MenuIcon } from './NoteIcons'
 import { AccountButton, SaveToNotes, useNotesAccount } from './NotesAccount'
 import {
   withShareStore,
@@ -189,13 +190,20 @@ function Header({
           <button
             className="header-mode-link saved-nav"
             onClick={() => openSaved()}
+            aria-label="Saved notes"
+            aria-current={
+              window.location.pathname === '/saved' ? 'page' : undefined
+            }
+            title="Saved notes"
           >
-            Saved
+            <BookmarkIcon />
           </button>
           <AccountButton />
         </nav>
         <details className="mobile-menu">
-          <summary aria-label="Open navigation">Menu</summary>
+          <summary aria-label="Open navigation">
+            <MenuIcon />
+          </summary>
           <div
             className="mobile-menu-links"
             onClick={(event) => {
@@ -206,7 +214,6 @@ function Header({
             <button onClick={onSend}>Share now</button>
             <button onClick={onReceive}>Receive</button>
             <button onClick={() => openSaved()}>Saved notes</button>
-            <AccountButton />
             <a href="#how-it-works">How it works</a>
             <a href="#faq">FAQ</a>
             <a href="#comments">Comments</a>

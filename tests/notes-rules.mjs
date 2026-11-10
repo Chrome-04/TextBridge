@@ -182,6 +182,30 @@ test(
           updatedAt: serverTimestamp(),
         }),
       )
+      await updateDoc(doc(alice.db, path), {
+        colour: 'sage',
+        pinned: true,
+        revision: 3,
+        updatedAt: serverTimestamp(),
+      })
+      assert.equal(
+        (await getDocFromServer(doc(alice.db, path))).data().pinned,
+        true,
+      )
+      await denied(
+        updateDoc(doc(alice.db, path), {
+          colour: '#ffffff',
+          revision: 4,
+          updatedAt: serverTimestamp(),
+        }),
+      )
+      await denied(
+        updateDoc(doc(alice.db, path), {
+          pinned: 'yes',
+          revision: 4,
+          updatedAt: serverTimestamp(),
+        }),
+      )
       await denied(getDocFromServer(doc(alice.db, 'shares/private')))
       await denied(getDocFromServer(doc(alice.db, 'comments/private')))
       await denied(deleteDoc(doc(alice.db, path)))

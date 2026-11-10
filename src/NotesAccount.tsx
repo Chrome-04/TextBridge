@@ -24,6 +24,7 @@ import {
 } from './firebase-session'
 import { documentFromText, titleFromText } from './note-document'
 import { notesError } from './notes-error'
+import { BookmarkIcon, LogOutIcon, ProfileIcon } from './NoteIcons'
 
 type SaveDraft = { id?: string; uid?: string; text?: string }
 
@@ -488,16 +489,119 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 }
 
 export function AccountButton() {
-  const { user, ready, logIn, logOut } = useNotesAccount()
+  const { user, ready, logIn } = useNotesAccount()
+  if (user) return <ProfileMenu key={user.uid} user={user} />
   return (
     <button
       className="secondary-button account-button"
+      type="button"
       disabled={!ready}
-      onClick={() => (user ? void logOut() : void logIn())}
-      title={user?.email || undefined}
+      aria-label={ready ? 'Log in' : 'Loading account'}
+      title={ready ? 'Log in' : undefined}
+      onClick={() => void logIn()}
     >
-      {!ready ? 'Account…' : user ? 'Log out' : 'Log in'}
+      <span className="account-button-icon">
+        <ProfileIcon />
+      </span>
+      <span className="account-button-label">
+        {ready ? 'Log in' : 'Account…'}
+      </span>
     </button>
+  )
+}
+
+function ProfileMenu({ user }: { user: User }) {
+  const { openSaved, logOut } = useNotesAccount()
+  const [open, setOpen] = useState(false)
+  const container = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const name = user.displayName?.trim()
+  const initial = Array.from(name || user.email || '')[0]?.toLocaleUpperCase()
+  const close = () => {
+    trigger.current?.focus()
+    setOpen(false)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const dismiss = (event: PointerEvent) => {
+      if (!container.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', dismiss)
+    return () => document.removeEventListener('pointerdown', dismiss)
+  }, [open])
+
+  return (
+    <div
+      className="profile-menu"
+      ref={container}
+      onBlur={(event) => {
+        if (
+          event.relatedTarget &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          setOpen(false)
+      }}
+      onKeyDown={(event) => {
+        if (open && event.key === 'Escape') {
+          event.preventDefault()
+          close()
+        }
+      }}
+    >
+      <button
+        className="profile-trigger"
+        type="button"
+        ref={trigger}
+        aria-label="Profile"
+        aria-expanded={open}
+        aria-controls="profile-panel"
+        title="Profile"
+        onClick={(event) => {
+          event.currentTarget.focus()
+          setOpen(!open)
+        }}
+      >
+        <span className="profile-avatar" aria-hidden="true">
+          {initial || <ProfileIcon />}
+        </span>
+      </button>
+      <div
+        className="profile-panel"
+        id="profile-panel"
+        role="region"
+        aria-label="Your profile"
+        hidden={!open}
+      >
+        <div className="profile-details">
+          <span className="eyebrow">Signed in</span>
+          <strong>{name || 'Your account'}</strong>
+          {user.email && <p>{user.email}</p>}
+        </div>
+        <div className="profile-actions">
+          <button
+            type="button"
+            onClick={() => {
+              close()
+              openSaved()
+            }}
+          >
+            <BookmarkIcon />
+            Saved notes
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              close()
+              void logOut()
+            }}
+          >
+            <LogOutIcon />
+            Log out
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
