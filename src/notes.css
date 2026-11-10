@@ -600,3 +600,38 @@
 .account-verification p {
   overflow-wrap: anywhere;
 }
+
+.account-social .secondary-button {
+  min-height: 44px;
+  gap: 12px;
+  font-size: 14px;
+}
+.provider-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+}
+.provider-google .provider-logo {
+  overflow: hidden;
+  border-radius: 50%;
+  background: #fff;
+}
+.provider-logo img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  max-width: none;
+  flex: 0 0 40px;
+}
+.provider-logo svg {
+  display: block;
+  flex-shrink: 0;
+}
+@media (forced-colors: active) {
+  .provider-google .provider-logo {
+    forced-color-adjust: none;
+  }
+}

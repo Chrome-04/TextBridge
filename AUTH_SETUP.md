@@ -99,3 +99,5 @@ those external account settings.
 References: [Google sign-in](https://firebase.google.com/docs/auth/web/google-signin),
 [email verification and reset](https://firebase.google.com/docs/auth/web/manage-users),
 [Apple sign-in](https://firebase.google.com/docs/auth/web/apple).
+
+The Google button uses Google’s official colour artwork from its [sign-in asset bundle](https://developers.google.com/static/identity/images/signin-assets.zip), Android + Web / Light / Square icon at 4×. The local asset is `public/icons/google.png`; it is served from this website.
