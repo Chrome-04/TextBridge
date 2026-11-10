@@ -104,7 +104,10 @@ test('PDF and JPG persist across refresh, download exact bytes, and expire', asy
       expect(download.suggestedFilename()).toBe(sample.name)
       expect(await readFile((await download.path())!)).toEqual(sample.buffer)
     }
-    await page.getByRole('tab', { name: 'Send', exact: true }).click()
+    await page
+      .getByRole('group', { name: 'Sharing mode' })
+      .getByRole('button', { name: 'Send', exact: true })
+      .click()
   }
   // Active content is downloaded as bytes, never embedded or executed.
   await page.getByRole('radio', { name: 'File', exact: true }).check()

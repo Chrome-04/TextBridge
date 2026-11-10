@@ -1,6 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function noteOwner(uid) {
+      return request.auth != null && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    function validNote(data) {
+      return data.keys().hasAll(['title', 'document', 'text', 'formatVersion', 'revision', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['title', 'document', 'text', 'formatVersion', 'revision', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 120
+        && data.document is string && data.document.size() > 0 && data.document.size() <= 200000
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 50000
+        && data.formatVersion == 1 && data.revision is int
+        && data.createdAt is timestamp && data.updatedAt == request.time;
+    }
+    match /users/{uid}/notes/{noteId} {
+      allow get: if noteOwner(uid);
+      allow list: if noteOwner(uid) && request.query.limit != null && request.query.limit <= 30;
+      allow create: if noteOwner(uid) && validNote(request.resource.data)
+        && request.resource.data.createdAt == request.time && request.resource.data.revision == 1;
+      allow update: if noteOwner(uid) && validNote(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.revision == resource.data.revision + 1;
+      allow delete: if noteOwner(uid);
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }

@@ -12,7 +12,10 @@ async function send(page: Page, text: string) {
   return code
 }
 async function receive(page: Page, code: string) {
-  await page.getByRole('tab', { name: 'Receive', exact: true }).click()
+  await page
+    .getByRole('group', { name: 'Sharing mode' })
+    .getByRole('button', { name: 'Receive', exact: true })
+    .click()
   await page.getByLabel('Enter sharing code').fill(code)
   await page.getByRole('button', { name: 'View content' }).click()
   await expect(
@@ -144,7 +147,10 @@ test('unknown codes, simulated network/rate errors, and draft recovery', async (
     page.getByRole('heading', { name: 'Code not found or expired.' }),
   ).toBeVisible()
   await accessible(page)
-  await page.getByRole('tab', { name: 'Send', exact: true }).click()
+  await page
+    .getByRole('group', { name: 'Sharing mode' })
+    .getByRole('button', { name: 'Send', exact: true })
+    .click()
   await page.getByLabel('Text or link').fill('Keep my draft 🌉')
   await page.getByText('Demo testing options', { exact: true }).click()
   await page.getByLabel('Next request').selectOption('network')
@@ -203,11 +209,16 @@ test('keyboard tabs, browser navigation, and cancellation during loading', async
   page,
 }) => {
   await page.goto('/')
-  await page.getByRole('tab', { name: 'Send', exact: true }).focus()
+  await page
+    .getByRole('group', { name: 'Sharing mode' })
+    .getByRole('button', { name: 'Send', exact: true })
+    .focus()
   await page.keyboard.press('ArrowRight')
   await expect(page).toHaveURL(/\/receive$/)
   await expect(
-    page.getByRole('tab', { name: 'Receive', exact: true }),
+    page
+      .getByRole('group', { name: 'Sharing mode' })
+      .getByRole('button', { name: 'Receive', exact: true }),
   ).toBeFocused()
   await page.goBack()
   await expect(page.getByLabel('Text or link')).toBeVisible()
@@ -217,7 +228,10 @@ test('keyboard tabs, browser navigation, and cancellation during loading', async
   await page.getByLabel('Text or link').fill('cancel this request')
   await page.getByRole('button', { name: 'Generate code' }).click()
   await expect(page.getByRole('status')).toContainText('Building your bridge')
-  await page.getByRole('tab', { name: 'Receive', exact: true }).click()
+  await page
+    .getByRole('group', { name: 'Sharing mode' })
+    .getByRole('button', { name: 'Receive', exact: true })
+    .click()
   await expect(page.getByLabel('Enter sharing code')).toBeVisible()
   // After the delayed operation would finish, navigation must still win.
   await page.clock.runFor(700)
@@ -287,7 +301,10 @@ test('light and dark themes are accessible and the chosen mode survives reload',
     await accessible(page)
     await receive(page, code)
     await accessible(page)
-    await page.getByRole('tab', { name: 'Send', exact: true }).click()
+    await page
+      .getByRole('group', { name: 'Sharing mode' })
+      .getByRole('button', { name: 'Send', exact: true })
+      .click()
   }
 })
 

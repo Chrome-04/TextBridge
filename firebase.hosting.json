@@ -1,5 +1,9 @@
 {
   "auth": { "providers": { "anonymous": true } },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "hosting": {
     "public": "dist",
     "ignore": ["firebase.hosting.json", "**/.*", "**/node_modules/**"],
@@ -24,6 +28,14 @@
       },
       {
         "source": "/receive/**",
+        "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+      },
+      {
+        "source": "/saved",
+        "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+      },
+      {
+        "source": "/saved/**",
         "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
       },
       {

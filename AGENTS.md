@@ -11,8 +11,10 @@
   notice in that preview. No assistant deployment without the user's explicit request. Never touch the
   expense tracker. Local CLI commands must explicitly use demo-textbridge.
 - Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
-  OR one file strictly under 20,000,000 bytes. No accounts, payments, passwords,
-  24-hour option, or one-time reads. Download files; never embed active content.
+  OR one file strictly under 20,000,000 bytes. Guest sharing needs no account.
+  The user approved optional Firebase email/password accounts and private Firestore
+  Saved notes. No payments, 24-hour option, or one-time reads. Download files;
+  never embed active content. No Clipboard feature.
 - Generate a code, same-origin /receive#CODE link, and locally rendered QR code.
   Links prefill Receive; they do not bypass expiry. Keep the correct local-testing notice for the selected mode.
 - Codes are six uppercase symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
@@ -28,7 +30,7 @@
   proxy. See PUBLIC_DEPLOYMENT.md. Firebase guest Auth and App Check are required
   for live requests; keep it gated until provider setup, cloud deployment, cleanup
   scheduling, and production checks are ready. Local Supabase uses its isolated launcher and a runtime path without spaces;
-  `demo-textbridge` is for legacy Firebase commands only.
+  `demo-textbridge` is for isolated Firebase emulators, including Saved notes.
 - Run `pnpm supabase:start` and `pnpm dev`. `pnpm test:supabase` runs real local
   integration and desktop/mobile browser checks. Never reset normal user databases.
   Supabase keys stay in ignored files/backend environment, never browser code.
@@ -64,6 +66,23 @@
   Never backfill deleted historical shares or use browser storage for the count.
   `SHARE_COUNT_SETUP.md` documents the owner's migration/API/Hosting update.
   `npm run test:share-count` checks the local database in a rolled-back transaction.
+- `src/NotesAccount.tsx`, `src/SavedNotes.tsx`: optional email/password accounts,
+  Save to Notes on Send/Receive, and a private formatted notebook at `/saved`.
+  Save text only (50,000 characters / 200,000 UTF-8 document bytes), not files.
+  Manual save, search loaded notes, 30-note pagination, optimistic revision checks,
+  explicit deletion confirmation, and plain-text temporary sharing snapshots.
+  Notes persist until deletion independently of sharing expiry. No Clipboard UI.
+- `src/firebase-session.ts`: shared session-only Firebase Auth for guest/account
+  live headers and notes, plus existing App Check. Local notes always use the
+  `demo-textbridge` Auth/Firestore emulators; no public credentials are needed.
+- `src/notes-client.ts`, `src/note-document.ts`: owner paths, server-confirmed
+  saves, schema/size validation, restricted document JSON, and plain snapshots.
+  No raw HTML rendering or persistent private note/draft cache. Clear visible
+  private data on logout/account switch. Keep drafts after save failures.
+- `SAVED_NOTES_SETUP.md`: manual Firebase Email/Password enablement, default
+  Firestore creation, owner rules/indexes deployment, Hosting build/deploy, and
+  two-device verification. Run `npm run notes:emulators` for local preview;
+  `npm run test:notes` uses fresh emulators without importing normal user data.
 - `functions/comments.js`: server validation (nickname 40, comment 1,000 characters),
   server timestamps, and atomic posting/list limits. Direct database access stays
   denied. Comments persist independently of sharing expiry. No moderation UI yet.
@@ -76,7 +95,9 @@
 - `supabase/functions/api/`: shared Web API handler and Deno Edge entrypoint.
 - `scripts/supabase.mjs`: local runtime launcher and private status capture.
 - Legacy Firebase service code is retained; do not migrate or reset its data.
-- Deny direct browser database/storage access. Never generate public download URLs.
+- Deny direct browser access to temporary-share databases/storage. The approved
+  exception is Firestore `users/{uid}/notes/{id}`, protected by owner-only rules;
+  all other Firestore paths stay denied. Never generate public download URLs.
 - Support light/dark themes with a persisted choice; default to system preference.
 - Receive uses one labeled native input with six decorative code slots. Preserve
   paste, normalization, caret/selection, and the forced-colors fallback when editing.
@@ -108,8 +129,9 @@
 - Firebase TextBridge Web is registered; private pending config is ignored under
   secrets/. The user manually deployed the website/backend; no assistant deployment
   or billing change has occurred. The live homepage returns HTTP 200.
-- firebase.hosting.json is the separate Hosting/Auth deployment config. Never
-  deploy legacy Firebase Functions/Firestore/Storage for the Supabase public app.
+- firebase.hosting.json is the separate Hosting/Auth/notes-Firestore config.
+  Deploy notes rules/indexes explicitly using this config; never deploy legacy
+  Firebase Functions or Storage for the Supabase public app.
 - Firebase Anonymous Auth and the saved reCAPTCHA Enterprise App Check provider
   have been verified. Ignored .env.production.local is complete and the real public
   build passes. Real provider token exchanges, cloud cleanup, and two-device checks
@@ -125,4 +147,23 @@
   redeploy steps. The homepage is indexable in source; Firebase Hosting must keep
   `/receive` and `/receive/**` noindex through response headers. Only the homepage
   belongs in public/sitemap.xml. These SEO changes require the owner's redeploy.
-- 31 unit/contract tests + 8 real local backend tests + 2 browser flows pass.
+- The retained real local Supabase integration checks passed at the prior checkpoint.
+
+## Saved notes checkpoint (November 10)
+- Optional email/password accounts and private formatted Saved notes are implemented
+  locally. No account provider, cloud Firestore database/rules, or website update
+  was deployed by the assistant. Follow SAVED_NOTES_SETUP.md before publishing.
+- `npm run check` passes 39 unit/contract tests and the production build;
+  `npm run build:public` also passes with the existing ignored public configuration.
+- The real local Auth/Firestore owner-rules test passes (owner CRUD, cross-account
+  and anonymous denial, schema/size/timestamp/revision validation).
+- Six Saved-note flows pass across desktop, mobile, and 320px screens, including
+  signup/login/logout, formatting persistence, save before/after sharing, plain
+  snapshots, search/delete, offline errors, concurrent edits, and About navigation.
+- All 51 retained sharing browser tests pass. Select Send/Receive buttons within
+  the labeled Sharing mode group, separate from header navigation. Mode switching
+  restores keyboard focus after mounting. Use one browser worker for large-text
+  and accessibility scans to avoid exhausting the local machine.
+- The normal local preview needs `npm run notes:emulators` for accounts/notes;
+  temporary sharing still uses local Supabase. Never import emulator accounts or
+  test notes into the public project. No new administrator secret is required.

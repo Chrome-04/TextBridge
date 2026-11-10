@@ -2,6 +2,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import HelpSections from './HelpSections'
 import CommentsSection from './CommentsSection'
 import ShareCount from './ShareCount'
+import { AccountButton, SaveToNotes, useNotesAccount } from './NotesAccount'
 import {
   withShareStore,
   usingBackend,
@@ -14,6 +15,8 @@ import {
   useMemo,
   useRef,
   useState,
+  lazy,
+  Suspense,
   type ReactNode,
 } from 'react'
 import {
@@ -32,8 +35,16 @@ import {
 
 type Mode = 'send' | 'receive'
 type View =
-  Mode | 'generating' | 'generated' | 'retrieving' | 'received' | 'failure'
+  | Mode
+  | 'saved'
+  | 'generating'
+  | 'generated'
+  | 'retrieving'
+  | 'received'
+  | 'failure'
 type Simulation = 'normal' | 'network' | 'rate-limited'
+const SavedNotes = lazy(() => import('./SavedNotes'))
+let pendingModeFocus: Mode | null = null
 
 const sectionHashes = new Set([
   '#main',
@@ -134,6 +145,7 @@ function Header({
   onReceive: () => void
   activeMode: Mode
 }) {
+  const { openSaved } = useNotesAccount()
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -170,14 +182,31 @@ function Header({
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
             <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
-            {theme === 'dark' ? 'Light' : 'Dark'} mode
+            <span className="theme-label">
+              {theme === 'dark' ? 'Light' : 'Dark'} mode
+            </span>
           </button>
+          <button
+            className="header-mode-link saved-nav"
+            onClick={() => openSaved()}
+          >
+            Saved
+          </button>
+          <AccountButton />
         </nav>
         <details className="mobile-menu">
           <summary aria-label="Open navigation">Menu</summary>
-          <div className="mobile-menu-links">
+          <div
+            className="mobile-menu-links"
+            onClick={(event) => {
+              if ((event.target as Element).closest('button,a'))
+                event.currentTarget.closest('details')?.removeAttribute('open')
+            }}
+          >
             <button onClick={onSend}>Share now</button>
             <button onClick={onReceive}>Receive</button>
+            <button onClick={() => openSaved()}>Saved notes</button>
+            <AccountButton />
             <a href="#how-it-works">How it works</a>
             <a href="#faq">FAQ</a>
             <a href="#comments">Comments</a>
@@ -201,6 +230,12 @@ function ModeTabs({
   onReceive: () => void
   compact?: boolean
 }) {
+  useLayoutEffect(() => {
+    if (pendingModeFocus === mode) {
+      document.getElementById(`tab-${mode}`)?.focus()
+      pendingModeFocus = null
+    }
+  }, [mode])
   return (
     <div className={compact ? 'mode-row mode-row-compact' : 'mode-row'}>
       <div
@@ -218,9 +253,10 @@ function ModeTabs({
                   : mode === 'send'
                     ? 'receive'
                     : 'send'
+            if (next === mode) document.getElementById(`tab-${next}`)?.focus()
+            else pendingModeFocus = next
             if (next === 'send') onSend()
             else onReceive()
-            document.getElementById(`tab-${next}`)?.focus()
           }
         }}
       >
@@ -487,9 +523,12 @@ function SendView({
               ))}
             </div>
           </fieldset>
-          <button className="primary-button" disabled={!valid} type="submit">
-            Generate code <ArrowIcon />
-          </button>
+          <div className="notes-actions send-note-actions">
+            {contentKind === 'text' && <SaveToNotes text={text} />}
+            <button className="primary-button" disabled={!valid} type="submit">
+              Generate code <ArrowIcon />
+            </button>
+          </div>
         </div>
         <p className="local-note">
           {isLive
@@ -1026,7 +1065,12 @@ function ReceivedView({
               {note.file ? 'Shared file' : 'Shared text'}
             </span>
           </div>
-          {!note.file && <CopyButton value={note.text} label="Copy text" />}
+          {!note.file && (
+            <div className="notes-actions">
+              <SaveToNotes text={note.text} />
+              <CopyButton value={note.text} label="Copy text" />
+            </div>
+          )}
         </div>
         {note.file ? (
           <FileDownload note={note} />
@@ -1148,6 +1192,9 @@ function LoadingView({ mode }: { mode: Mode }) {
 }
 
 export default function App() {
+  const { confirmLeave } = useNotesAccount()
+  const guardRef = useRef(confirmLeave)
+  guardRef.current = confirmLeave
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
       const saved = localStorage.getItem('textbridge:theme')
@@ -1175,7 +1222,11 @@ export default function App() {
       ? 'receive'
       : 'send',
   )
-  const [view, setView] = useState<View>(mode)
+  const [view, setView] = useState<View>(() =>
+    window.location.pathname.replace(/\/$/, '') === '/saved' ? 'saved' : mode,
+  )
+  const viewRef = useRef(view)
+  viewRef.current = view
   const [note, setNote] = useState<SharedNote | null>(null)
   const [text, setText] = useState('')
   const [duration, setDuration] = useState<Duration>('5 minutes')
@@ -1189,26 +1240,51 @@ export default function App() {
   const mainRef = useRef<HTMLElement>(null)
 
   // Invalidate pending demo requests when the user changes screens.
-  const navigate = (next: Mode, updateHistory = true) => {
+  const navigate = (next: Mode | 'saved', updateHistory = true) => {
+    if (!guardRef.current()) {
+      if (
+        !updateHistory &&
+        (window.location.pathname !== '/saved' || window.location.hash)
+      )
+        window.history.pushState({}, '', '/saved')
+      return false
+    }
     request.current++
-    const path = next === 'receive' ? '/receive' : '/'
+    const path =
+      next === 'saved' ? '/saved' : next === 'receive' ? '/receive' : '/'
     if (
       updateHistory &&
       (window.location.pathname !== path || window.location.hash)
     )
       window.history.pushState({}, '', path)
-    setMode(next)
+    if (next !== 'saved') setMode(next)
     setView(next)
     setNote(null)
+    return true
   }
   useEffect(() => {
     const pop = () => {
-      if (sectionHashes.has(window.location.hash)) return
+      if (sectionHashes.has(window.location.hash)) {
+        const hash = window.location.hash
+        if (
+          (viewRef.current === 'saved' ||
+            window.location.pathname.replace(/\/$/, '') === '/saved') &&
+          navigate('send', false)
+        ) {
+          window.history.replaceState({}, '', `/${hash}`)
+          window.requestAnimationFrame(() =>
+            document.getElementById(hash.slice(1))?.scrollIntoView(),
+          )
+        }
+        return
+      }
       setCode(codeFromLocation())
       navigate(
-        window.location.pathname.replace(/\/$/, '') === '/receive'
-          ? 'receive'
-          : 'send',
+        window.location.pathname.replace(/\/$/, '') === '/saved'
+          ? 'saved'
+          : window.location.pathname.replace(/\/$/, '') === '/receive'
+            ? 'receive'
+            : 'send',
         false,
       )
     }
@@ -1308,7 +1384,7 @@ export default function App() {
         ref={mainRef}
         tabIndex={-1}
       >
-        {!['send', 'receive'].includes(view) && (
+        {!['send', 'receive', 'saved'].includes(view) && (
           <ModeTabs
             mode={mode}
             onReceive={() => navigate('receive')}
@@ -1316,6 +1392,13 @@ export default function App() {
           />
         )}
         <section id="tool-panel">
+          {view === 'saved' && (
+            <Suspense fallback={<p role="status">Opening your notebook…</p>}>
+              <SavedNotes
+                onShared={() => setShareCountVersion((value) => value + 1)}
+              />
+            </Suspense>
+          )}
           {view === 'send' && (
             <SendView
               contentKind={contentKind}
@@ -1371,15 +1454,19 @@ export default function App() {
             />
           )}
         </section>
-        {usingBackend && backendName === 'Supabase' && (
+        {view !== 'saved' && usingBackend && backendName === 'Supabase' && (
           <ShareCount refreshVersion={shareCountVersion} />
         )}
-        <p className="privacy-note">
-          Anyone with an active code or link can access its content until it
-          expires.
-        </p>
-        <CommentsSection />
-        <HelpSections />
+        {view !== 'saved' && (
+          <>
+            <p className="privacy-note">
+              Anyone with an active code or link can access its content until it
+              expires.
+            </p>
+            <CommentsSection />
+            <HelpSections />
+          </>
+        )}
         {!usingBackend && (
           <details className="demo-controls">
             <summary>Demo testing options</summary>

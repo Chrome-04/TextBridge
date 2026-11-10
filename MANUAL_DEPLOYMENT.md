@@ -1,5 +1,10 @@
 # Deploy TextBridge yourself
 
+For the new account and private-notes feature, complete
+[SAVED_NOTES_SETUP.md](./SAVED_NOTES_SETUP.md) before publishing the new frontend.
+It adds Email/Password Authentication and owner-only Firestore rules; the normal
+Supabase sharing backend remains in place.
+
 For the successful-share counter update on an existing deployment, follow
 `SHARE_COUNT_SETUP.md` in migration, API, then Hosting order.
 

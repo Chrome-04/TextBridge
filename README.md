@@ -3,7 +3,21 @@
 TextBridge shares text or one file using a six-character code, link, or QR code.
 The default backend is **local Supabase Postgres, private Storage, and an Edge
 Function**. The app runs at http://127.0.0.1:5173. The cloud project and public
-website are not deployed yet; see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
+website were manually deployed by the owner; the regular preview remains local.
+See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) and [PUBLIC_DEPLOYMENT.md](./PUBLIC_DEPLOYMENT.md).
+
+## Accounts and Saved notes
+
+Optional email/password accounts keep private formatted text notes in Firestore.
+Use **Save to Notes** before sharing or after receiving text, then edit and find
+it in **Saved**. Share note creates a separate plain-text copy with the existing
+5/10-minute expiry. Guest sharing still works without an account.
+
+Run `npm run notes:emulators` alongside your normal preview to try accounts and
+notes locally. Real accounts require the owner's Firebase Email/Password provider
+setup, Firestore database/rules, and website redeployment. Follow
+[SAVED_NOTES_SETUP.md](./SAVED_NOTES_SETUP.md) step by step. Nothing is deployed
+automatically. Notes save text only, up to 50,000 characters; no Clipboard feature.
 
 ## Start in VS Code
 
@@ -53,7 +67,7 @@ See [SHARE_COUNT_SETUP.md](./SHARE_COUNT_SETUP.md) for the manual cloud update.
   The newest 20 appear publicly within this local app. Use Refresh comments to
   see posts from another browser. Comments have no sharing expiry timer.
 - Both text and comments render as plain text. Nicknames are unverified. There
-  is no moderation interface, account history, end-to-end encryption, or scanning
+  is no moderation interface, sharing history, end-to-end encryption, or scanning
   of uploaded files.
 
 Anyone with an active code/link can retrieve its content until expiry. Copies

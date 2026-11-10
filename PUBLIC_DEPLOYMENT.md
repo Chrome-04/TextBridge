@@ -2,6 +2,11 @@
 
 For commands and dashboard steps you can run yourself, see `MANUAL_DEPLOYMENT.md`.
 
+The optional private-notes update has its own manual setup in
+[SAVED_NOTES_SETUP.md](./SAVED_NOTES_SETUP.md). Enable email/password accounts,
+create the default Firestore database, and publish its notes rules before
+deploying that frontend. These new cloud settings have not been applied by the assistant.
+
 ## Current checkpoint
 
 The Firebase CLI and Supabase CLI sign-ins work, and the existing TextBridge
@@ -25,11 +30,12 @@ secret is included in this browser configuration.
 Prepared and checked:
 
 - `firebase.hosting.json`: static Hosting with SPA routing, security/cache headers,
-  and an anonymous Auth provider declaration. It does not deploy Firebase Functions,
-  Firestore, or Storage.
-- `src/live-client.ts`: a silent Firebase guest session and App Check token. Visitors
-  do not enter email/password or see a sign-in form. Anonymous identities do exist
-  in Firebase Auth; this is separate from the nickname used for comments.
+  an anonymous Auth declaration, and the optional notes Firestore rules/indexes.
+  Always deploy explicit targets. Firebase Functions and Storage remain excluded.
+- `src/live-client.ts`: shared Firebase identity and App Check tokens. Visitors
+  can still share without signing up; account holders use their authenticated
+  identity. Optional email/password sign-in is for private Saved notes and is
+  separate from the public nickname used for comments.
 - `src/share-client.ts`: direct HTTPS calls to the configured Supabase function
   in the public build. Local development continues using the Vite proxy.
 - `supabase/functions/api/firebase-client.ts`: verifies Firebase Auth and App Check

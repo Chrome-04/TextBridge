@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "notes:emulators": "node scripts/notes-emulators.mjs",
+    "test:notes": "node scripts/notes-emulators.mjs test",
     "supabase:start": "node scripts/supabase.mjs start",
     "supabase:stop": "node scripts/supabase.mjs stop",
     "supabase:status": "node scripts/supabase.mjs status",
@@ -24,6 +26,9 @@
     "cleanup:local": "GCLOUD_PROJECT=demo-textbridge FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 node functions/cleanup.js"
   },
   "dependencies": {
+    "@tiptap/pm": "^3.33.0",
+    "@tiptap/react": "^3.33.0",
+    "@tiptap/starter-kit": "^3.33.0",
     "firebase": "^13.2.0",
     "jose": "^6.2.15",
     "qrcode.react": "^4.2.0",

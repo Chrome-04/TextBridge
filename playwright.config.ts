@@ -3,8 +3,9 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/browser',
   fullyParallel: true,
-  workers: 3,
-  timeout: 60_000,
+  // Large-text and accessibility scans are memory intensive on the local Mac.
+  workers: 1,
+  timeout: 120_000,
   use: { baseURL: 'http://127.0.0.1:5174', trace: 'retain-on-failure' },
   projects: [
     { name: 'desktop', use: { viewport: { width: 1440, height: 1000 } } },
