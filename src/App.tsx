@@ -4,6 +4,8 @@ import CommentsSection from './CommentsSection'
 import ShareCount from './ShareCount'
 import { BookmarkIcon, MenuIcon } from './NoteIcons'
 import { AccountButton, SaveToNotes, useNotesAccount } from './NotesAccount'
+import { filePreviewKind, type PreviewKind } from './file-preview-type'
+import FilePreview from './FilePreview'
 import {
   withShareStore,
   usingBackend,
@@ -997,8 +999,22 @@ function formatBytes(bytes: number) {
 function FileDownload({ note }: { note: SharedNote }) {
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
+  const [previewKind, setPreviewKind] = useState<PreviewKind | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const objectUrl = useRef<string | null>(null)
   const mounted = useRef(false)
+  useEffect(() => {
+    let cancelled = false
+    if (note.blob)
+      void filePreviewKind(note.blob)
+        .then((kind) => {
+          if (!cancelled) setPreviewKind(kind)
+        })
+        .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [note.blob])
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -1038,10 +1054,39 @@ function FileDownload({ note }: { note: SharedNote }) {
     <div className="file-received">
       <p className="file-name">{note.file?.name}</p>
       <p>{formatBytes(note.file?.size ?? 0)} · File</p>
-      <button className="primary-button" disabled={busy} onClick={download}>
-        {busy ? 'Preparing download…' : 'Download file'}
-      </button>
+      <div className="file-actions">
+        {previewKind && note.blob && (
+          <button
+            className="secondary-button"
+            type="button"
+            aria-expanded={previewOpen}
+            aria-controls="received-file-preview"
+            onClick={() => {
+              if (note.expiresAt <= Date.now()) {
+                setStatus('This item has expired. Receive a new file.')
+                return
+              }
+              setPreviewOpen(!previewOpen)
+            }}
+          >
+            {previewOpen ? 'Hide preview' : 'Preview file'}
+          </button>
+        )}
+        <button className="primary-button" disabled={busy} onClick={download}>
+          {busy ? 'Preparing download…' : 'Download file'}
+        </button>
+      </div>
       <p role="status">{status}</p>
+      {previewOpen && previewKind && note.blob && note.file && (
+        <div id="received-file-preview">
+          <FilePreview
+            key={note.code}
+            blob={note.blob}
+            kind={previewKind}
+            name={note.file.name}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -1060,7 +1105,7 @@ function ReceivedView({
         title={note.file ? 'File received.' : 'Text received.'}
         description={
           note.file
-            ? 'Download your file before it expires.'
+            ? 'Preview supported files or download a copy before it expires.'
             : 'Your text, just as it was sent. Ready for its next stop.'
         }
       />

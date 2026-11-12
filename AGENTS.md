@@ -14,8 +14,11 @@
 - Share plain text (up to 100,000 whitespace-separated words and 20 MiB UTF-8)
   OR one file strictly under 20,000,000 bytes. Guest sharing needs no account.
   The user approved optional Firebase Google and email/password accounts and private Firestore
-  Saved notes. No payments, 24-hour option, or one-time reads. Download files;
-  never embed active content. No Clipboard feature.
+  Saved notes. No payments, 24-hour option, or one-time reads. Receive supports
+  signature-checked PDF and PNG/JPEG/GIF/WebP previews at the user's request.
+  PDFs render as canvas pages through bundled PDF.js, with no scripting or
+  interactive annotations. Never embed uploaded HTML or SVG. Keep downloads
+  available for every file type. No Clipboard feature.
 - Generate a code, same-origin /receive#CODE link, and locally rendered QR code.
   Links prefill Receive; they do not bypass expiry. Keep the correct local-testing notice for the selected mode.
 - Codes are six uppercase symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`.
