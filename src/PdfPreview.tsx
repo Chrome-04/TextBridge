@@ -11,6 +11,34 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 GlobalWorkerOptions.workerSrc = workerUrl
 
+function PageArrow({
+  forward = false,
+  edge = false,
+}: {
+  forward?: boolean
+  edge?: boolean
+}) {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <g transform={forward ? 'translate(24 0) scale(-1 1)' : undefined}>
+        <path d="m15 6-6 6 6 6" />
+        {edge && <path d="M5 5v14" />}
+      </g>
+    </svg>
+  )
+}
+
 // Vite publishes these bundled resources under its own asset URLs.
 const assets = import.meta.glob<string>(
   '/node_modules/pdfjs-dist/{cmaps,standard_fonts,wasm}/*',
@@ -139,6 +167,11 @@ export default function PdfPreview({
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [error, setError] = useState('')
   const [pageNumber, setPageNumber] = useState(1)
+  const [pageInput, setPageInput] = useState('1')
+  function goToPage(page: number) {
+    setPageNumber(page)
+    setPageInput(String(page))
+  }
   useEffect(() => {
     let cancelled = false
     let task: PDFDocumentLoadingTask | undefined
@@ -176,20 +209,96 @@ export default function PdfPreview({
       <div className="pdf-controls" role="group" aria-label="PDF pages">
         <button
           className="secondary-button"
+          type="button"
+          aria-label="First page"
+          title="First page"
           disabled={pageNumber === 1}
-          onClick={() => setPageNumber((value) => value - 1)}
+          onClick={() => goToPage(1)}
         >
-          Previous page
+          <PageArrow edge />
         </button>
-        <span role="status">
+        <button
+          className="secondary-button"
+          type="button"
+          aria-label="Previous page"
+          title="Previous page"
+          disabled={pageNumber === 1}
+          onClick={() => goToPage(pageNumber - 1)}
+        >
+          <PageArrow />
+        </button>
+        <form
+          className="pdf-page-jump"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const target = Number(pageInput)
+            if (
+              Number.isInteger(target) &&
+              target >= 1 &&
+              target <= pdf.numPages
+            )
+              goToPage(target)
+          }}
+        >
+          <label>
+            Page
+            <input
+              type="number"
+              name="page"
+              aria-label="Page number"
+              min={1}
+              max={pdf.numPages}
+              step={1}
+              required
+              value={pageInput}
+              onChange={(event) => setPageInput(event.target.value)}
+            />
+          </label>
+          <span>of {pdf.numPages}</span>
+          <button
+            className="secondary-button"
+            type="submit"
+            aria-label="Go to page"
+            title="Go to page"
+          >
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14m-5-5 5 5-5 5" />
+            </svg>
+          </button>
+        </form>
+        <span className="sr-only" role="status">
           Page {pageNumber} of {pdf.numPages}
         </span>
         <button
           className="secondary-button"
+          type="button"
+          aria-label="Next page"
+          title="Next page"
           disabled={pageNumber === pdf.numPages}
-          onClick={() => setPageNumber((value) => value + 1)}
+          onClick={() => goToPage(pageNumber + 1)}
         >
-          Next page
+          <PageArrow forward />
+        </button>
+        <button
+          className="secondary-button"
+          type="button"
+          aria-label="Last page"
+          title="Last page"
+          disabled={pageNumber === pdf.numPages}
+          onClick={() => goToPage(pdf.numPages)}
+        >
+          <PageArrow forward edge />
         </button>
       </div>
       <PdfPage pdf={pdf} pageNumber={pageNumber} name={name} />

@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => {
     'supabase'
   return {
     plugins: [react(), tailwindcss()],
+    optimizeDeps: {
+      // Prepare the document readers before a received file is opened.
+      include: ['pdfjs-dist', 'mammoth', 'fflate'],
+    },
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },

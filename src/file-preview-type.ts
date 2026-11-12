@@ -1,5 +1,5 @@
 export type PreviewKind =
-  'pdf' | 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
+  'pdf' | 'docx' | 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
 
 // Uploads arrive as generic bytes. Decide from their contents, not their name.
 export async function filePreviewKind(blob: Blob): Promise<PreviewKind | null> {
@@ -18,5 +18,15 @@ export async function filePreviewKind(blob: Blob): Promise<PreviewKind | null> {
   if (text.startsWith('GIF87a') || text.startsWith('GIF89a')) return 'image/gif'
   if (text.startsWith('RIFF') && text.slice(8, 12) === 'WEBP')
     return 'image/webp'
+  if (
+    header[0] === 80 &&
+    header[1] === 75 &&
+    header[2] === 3 &&
+    header[3] === 4
+  ) {
+    const { isPreviewableDocx } = await import('./docx-archive.ts')
+    if (isPreviewableDocx(new Uint8Array(await blob.arrayBuffer())))
+      return 'docx'
+  }
   return null
 }

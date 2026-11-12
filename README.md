@@ -59,10 +59,13 @@ when the new migration is installed; older deleted shares cannot be reconstructe
 See [SHARE_COUNT_SETUP.md](./SHARE_COUNT_SETUP.md) for the manual cloud update.
 
 - Text: up to 100,000 whitespace-separated words and 20 MiB UTF-8.
-- Files: one file strictly under 20,000,000 bytes. Receive can preview PDF pages
-  and PNG/JPEG/GIF/WebP images before downloading. Preview checks the file bytes.
-  The PDF viewer and its fonts/decoders are bundled with the website. Other
-  file types and password-protected PDFs use Download. Previews close at expiry.
+- Files: one file strictly under 20,000,000 bytes. Receive can preview PDF pages,
+  PNG/JPEG/GIF/WebP images, and DOCX document text before downloading. Preview
+  checks the file bytes. PDF controls include first/previous/next/last page
+  and a page-number jump. Word previews extract readable text in a worker,
+  with archive expansion, text-size, and time limits. Download preserves the
+  original Word layout. The viewers run in the browser using bundled resources.
+  Other file types and password-protected PDFs use Download. Previews close at expiry.
 - New codes last **5 or 10 minutes**, with **5 minutes selected by default**.
 - Existing codes keep their original expiration. Reads do not extend their time.
 - Code, sharing link, local QR rendering, live countdown, copy, paste, and clear.

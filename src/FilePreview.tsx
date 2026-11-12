@@ -7,7 +7,7 @@ function ImagePreview({
   name,
 }: {
   blob: Blob
-  kind: Exclude<PreviewKind, 'pdf'>
+  kind: Exclude<PreviewKind, 'pdf' | 'docx'>
   name: string
 }) {
   const [url, setUrl] = useState('')
@@ -45,17 +45,19 @@ export default function FilePreview({
   kind: PreviewKind
   name: string
 }) {
-  const [Pdf, setPdf] = useState<ComponentType<{
+  const [Document, setDocument] = useState<ComponentType<{
     blob: Blob
     name: string
   }> | null>(null)
   const [error, setError] = useState(false)
   useEffect(() => {
-    if (kind !== 'pdf') return
+    if (kind !== 'pdf' && kind !== 'docx') return
     let cancelled = false
-    void import('./PdfPreview')
+    const load =
+      kind === 'pdf' ? import('./PdfPreview') : import('./DocxPreview')
+    void load
       .then((module) => {
-        if (!cancelled) setPdf(() => module.default)
+        if (!cancelled) setDocument(() => module.default)
       })
       .catch(() => {
         if (!cancelled) setError(true)
@@ -66,16 +68,18 @@ export default function FilePreview({
   }, [kind])
   return (
     <section className="file-preview" aria-label="File preview">
-      {kind === 'pdf' ? (
+      {kind === 'pdf' || kind === 'docx' ? (
         error ? (
           <p role="status">
-            The PDF viewer could not load. Download the file, or refresh this
-            page and receive it again.
+            The {kind === 'pdf' ? 'PDF' : 'Word'} viewer could not load.
+            Download the file, or refresh this page and receive it again.
           </p>
-        ) : Pdf ? (
-          <Pdf blob={blob} name={name} />
+        ) : Document ? (
+          <Document blob={blob} name={name} />
         ) : (
-          <p role="status">Opening PDF…</p>
+          <p role="status">
+            Opening {kind === 'pdf' ? 'PDF' : 'Word document'}…
+          </p>
         )
       ) : (
         <ImagePreview blob={blob} kind={kind} name={name} />

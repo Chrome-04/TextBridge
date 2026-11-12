@@ -1934,21 +1934,62 @@ footer {
   justify-content: center;
   margin-bottom: 16px;
 }
-.pdf-controls span {
+.pdf-page-jump {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pdf-page-jump label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pdf-page-jump label,
+.pdf-page-jump span {
   color: var(--muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
-.pdf-controls .secondary-button {
+.pdf-page-jump input {
+  width: 64px;
   min-height: 44px;
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  text-align: center;
+}
+.pdf-controls .secondary-button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+}
+.pdf-controls .secondary-button:disabled {
+  opacity: 0.4;
 }
 .pdf-page canvas {
   display: block;
   max-width: 100%;
   margin: 0 auto;
   background: white;
+}
+.file-preview .word-text-preview {
+  max-height: 70dvh;
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 @media (max-width: 480px) {
   .file-received {
@@ -1958,12 +1999,14 @@ footer {
     padding: 10px;
   }
   .pdf-controls {
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, 44px);
+    gap: 6px;
   }
-  .pdf-controls span {
-    width: 100%;
-    order: -1;
-    text-align: center;
+  .pdf-page-jump {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
   }
 }
 @media (max-width: 640px) {
