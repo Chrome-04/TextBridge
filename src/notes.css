@@ -1156,3 +1156,104 @@
 .note-move-options button:disabled {
   opacity: 0.4;
 }
+
+.saved-library-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 0 24px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.saved-library-tabs button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  min-height: 44px;
+  color: var(--muted);
+}
+.saved-library-tabs button[aria-pressed='true'] {
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+.saved-files {
+  max-width: 100%;
+}
+.file-storage-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.file-storage-summary h2 {
+  margin: 0 0 8px;
+}
+.file-storage-summary p {
+  margin: 0;
+}
+.file-storage-meter {
+  margin: 22px 0;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.file-storage-meter label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.file-storage-meter progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--accent);
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+.file-storage-meter progress::-webkit-progress-bar {
+  background: var(--surface-raised);
+}
+.file-storage-meter progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.file-storage-meter p {
+  margin: 10px 0 0;
+}
+.saved-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+.saved-file-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.saved-file-details {
+  min-width: 0;
+  flex: 1 1 220px;
+  display: grid;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+.saved-file-list .notes-delete-confirm {
+  flex-basis: 100%;
+  margin: 0;
+}
+@media (max-width: 480px) {
+  .saved-file-list > li {
+    padding: 14px;
+  }
+  .file-storage-summary {
+    gap: 14px;
+  }
+}

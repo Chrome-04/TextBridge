@@ -1,3 +1,4 @@
+import { savedFiles, cleanupSavedFiles } from './saved-files.ts'
 // Standard Web APIs let the same request handler run in Deno and Node tests.
 export class ApiError extends Error {
   status: number
@@ -34,6 +35,7 @@ type Settings = {
   liveEnabled?: boolean
   origin?: string
   verifyClient?: (request: Request) => Promise<string | null>
+  verifyAccountClient?: (request: Request) => Promise<string | null>
   cleanupSecret?: string
   generateCode?: () => string
   fetch?: typeof fetch
@@ -118,9 +120,13 @@ export function createHandler(settings: Settings) {
     if (response.status === 204) return null as T
     return response.json()
   }
-  const storage = async (path: string, init: RequestInit = {}) => {
+  const storage = async (
+    path: string,
+    init: RequestInit = {},
+    bucket = 'textbridge',
+  ) => {
     const response = await request(
-      `${base}/storage/v1/object/textbridge${path}`,
+      `${base}/storage/v1/object/${bucket}${path}`,
       {
         ...init,
         headers: { ...adminHeaders, ...init.headers },
@@ -210,7 +216,7 @@ export function createHandler(settings: Settings) {
         headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
         headers.set(
           'Access-Control-Allow-Headers',
-          'Content-Type, Authorization, X-Firebase-AppCheck, X-Share-Kind, X-Share-Name, X-Share-Duration',
+          'Content-Type, Authorization, X-Firebase-AppCheck, X-Share-Kind, X-Share-Name, X-Share-Duration, X-File-Id',
         )
         return new Response(null, { status: 204, headers })
       }
@@ -234,7 +240,26 @@ export function createHandler(settings: Settings) {
           })
           await rpc('tb_cleanup_done', { p_generation: generation })
         }
-        return json({ removed: items.length })
+        return json({
+          removed: items.length,
+          filesRemoved: await cleanupSavedFiles({ rpc, storage }),
+        })
+      }
+      if (path.startsWith('/files/')) {
+        // Permanent storage always requires a verified registered account,
+        // including in local mode. Never trust a browser-provided owner ID.
+        const owner = await settings.verifyAccountClient?.(req)
+        if (!owner) throw new ApiError(403, 'forbidden')
+        return await savedFiles(req, path, {
+          rpc,
+          storage,
+          readBody,
+          jsonBody,
+          limit,
+          owner,
+          client: await clientHash(owner),
+          headers,
+        })
       }
       // CORS is not authentication: verify both Firebase tokens for live calls.
       const identity = settings.local

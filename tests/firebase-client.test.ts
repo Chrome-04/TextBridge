@@ -129,3 +129,38 @@ test('incomplete Firebase project configuration fails closed', async () => {
   )
   assert.equal(await missing(await tokens()), null)
 })
+
+test('private file identity requires a registered provider plus valid signed Auth and App Check', async () => {
+  const verifyAccount = firebaseClientVerifier(
+    config,
+    { auth: resolver, appCheck: resolver },
+    true,
+  )
+  assert.equal(await verifyAccount(await tokens()), null)
+  assert.equal(
+    await verifyAccount(
+      await tokens({ firebase: { sign_in_provider: 'anonymous' } }),
+    ),
+    null,
+  )
+  for (const provider of ['password', 'google.com', 'apple.com']) {
+    assert.equal(
+      await verifyAccount(
+        await tokens({ firebase: { sign_in_provider: provider } }),
+      ),
+      'firebase:guest-uid',
+    )
+  }
+  const forged = await tokens({ firebase: { sign_in_provider: 'password' } })
+  forged.headers.set('authorization', 'Bearer fake-token')
+  assert.equal(await verifyAccount(forged), null)
+  assert.equal(
+    await verifyAccount(
+      await tokens(
+        { firebase: { sign_in_provider: 'password' } },
+        { aud: ['projects/999'] },
+      ),
+    ),
+    null,
+  )
+})

@@ -25,6 +25,15 @@ account; pinned notes stay first. The editor includes a searchable emoji picker
 with categories. Publish the updated Firestore rules before deploying this
 version; see SAVED_NOTES_SETUP.md.
 
+## Private saved files
+
+Signed-in accounts can keep **20 MB total** of documents in the Saved page's
+Files tab. Upload a CV or other file, download it from another signed-in device,
+or permanently delete it to free space. This is separate from the 20 text notes
+and expiring guest shares. The server enforces the combined byte limit, including
+simultaneous uploads. See [SAVED_FILES_SETUP.md](./SAVED_FILES_SETUP.md) for local
+setup and the owner's manual schema/API/Hosting deployment steps.
+
 ## Start in VS Code
 
 Use Node 24 and pnpm 11.25.0. From this project folder:

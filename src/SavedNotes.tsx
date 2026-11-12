@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import EmojiPicker from './EmojiPicker'
+import SavedFiles from './SavedFiles'
 import NoteMoveHandle from './NoteMoveHandle'
 import { QRCodeSVG } from 'qrcode.react'
 import { useNotesAccount } from './NotesAccount'
@@ -1167,15 +1168,21 @@ function NotesLibrary({
 }
 
 export default function SavedNotes({ onShared }: { onShared: () => void }) {
-  const { user, ready, logIn } = useNotesAccount()
+  const { user, ready, logIn, requestedNote, leaveGuard } = useNotesAccount()
+  const [tab, setTab] = useState<'notes' | 'files'>('notes')
+  useEffect(() => {
+    if (requestedNote) setTab('notes')
+  }, [requestedNote])
   return (
     <>
       <div className="intro notes-intro">
-        <h1>Saved notes</h1>
+        <h1>{tab === 'files' ? 'Saved files' : 'Saved notes'}</h1>
         <p>
-          {user
-            ? 'Keep text for later and share a temporary copy when you need it.'
-            : 'Save a thought now. Find it on your next device.'}
+          {tab === 'files' && user
+            ? 'Your important documents, kept privately in your account.'
+            : user
+              ? 'Keep text for later and share a temporary copy when you need it.'
+              : 'Save a thought now. Find it on your next device.'}
         </p>
       </div>
       <div className="notes-page-meta">
@@ -1191,7 +1198,36 @@ export default function SavedNotes({ onShared }: { onShared: () => void }) {
       {!ready ? (
         <p role="status">Checking your account…</p>
       ) : user && canUseNotes(user) ? (
-        <NotesLibrary key={user.uid} uid={user.uid} onShared={onShared} />
+        <>
+          <div
+            className="saved-library-tabs"
+            role="group"
+            aria-label="Saved library"
+          >
+            {(['notes', 'files'] as const).map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={tab === choice}
+                onClick={() => {
+                  if (
+                    choice === tab ||
+                    (leaveGuard.current && !leaveGuard.current())
+                  )
+                    return
+                  setTab(choice)
+                }}
+              >
+                {choice === 'notes' ? 'Notes' : 'Files · 20 MB'}
+              </button>
+            ))}
+          </div>
+          {tab === 'notes' ? (
+            <NotesLibrary key={user.uid} uid={user.uid} onShared={onShared} />
+          ) : (
+            <SavedFiles key={user.uid} uid={user.uid} />
+          )}
+        </>
       ) : (
         <section className="card notes-signin">
           <span className="notes-welcome-icon" aria-hidden="true">
@@ -1208,12 +1244,15 @@ export default function SavedNotes({ onShared }: { onShared: () => void }) {
           </button>
         </section>
       )}
-      <p className="size-hint notes-private-hint">
-        Keep up to 20 notes at a time. Deleting one frees a slot. Notes stay in
-        your account until you delete them. Text only, up to 50,000 characters
-        per note. Save is manual; formatting stays in your notes and sharing
-        sends plain text. Log out when you finish on a shared computer.
-      </p>
+      {tab === 'notes' && (
+        <p className="size-hint notes-private-hint">
+          Keep up to 20 notes at a time. Deleting one frees a slot. Notes stay
+          in your account until you delete them. Text only, up to 50,000
+          characters per note. Save is manual; formatting stays in your notes
+          and sharing sends plain text. Log out when you finish on a shared
+          computer.
+        </p>
+      )}
     </>
   )
 }

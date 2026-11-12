@@ -4,6 +4,8 @@ The website has Google and email/password accounts and a private text notebook w
 in this feature setup has been deployed by the assistant. Your existing public
 version stays as it is until you complete the steps below.
 
+The separate **Files · 20 MB** tab is documented in [SAVED_FILES_SETUP.md](./SAVED_FILES_SETUP.md). Its combined file storage cap does not change the 20-note limit.
+
 ## What uses each service
 
 - **React + TypeScript**: the account screens, Saved library, and editor.

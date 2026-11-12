@@ -6,6 +6,7 @@
   },
   "include": [
     "supabase/functions/api/handler.ts",
+    "supabase/functions/api/saved-files.ts",
     "supabase/functions/api/firebase-client.ts",
     "tests/firebase-client.test.ts",
     "tests/supabase-handler.test.ts"

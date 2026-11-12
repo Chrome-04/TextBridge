@@ -1,5 +1,8 @@
 import { createHandler } from './handler.ts'
-import { firebaseClientVerifier } from './firebase-client.ts'
+import {
+  firebaseClientVerifier,
+  localFirebaseAccountVerifier,
+} from './firebase-client.ts'
 
 let keys: Record<string, string> = {}
 try {
@@ -25,6 +28,19 @@ Deno.serve(
       projectNumber: Deno.env.get('TEXTBRIDGE_FIREBASE_PROJECT_NUMBER') || '',
       appId: Deno.env.get('TEXTBRIDGE_FIREBASE_APP_ID') || '',
     }),
+    verifyAccountClient:
+      Deno.env.get('TEXTBRIDGE_MODE') === 'local'
+        ? localFirebaseAccountVerifier
+        : firebaseClientVerifier(
+            {
+              projectId: Deno.env.get('TEXTBRIDGE_FIREBASE_PROJECT_ID') || '',
+              projectNumber:
+                Deno.env.get('TEXTBRIDGE_FIREBASE_PROJECT_NUMBER') || '',
+              appId: Deno.env.get('TEXTBRIDGE_FIREBASE_APP_ID') || '',
+            },
+            undefined,
+            true,
+          ),
     cleanupSecret: Deno.env.get('TEXTBRIDGE_CLEANUP_SECRET'),
   }),
 )

@@ -11,6 +11,7 @@
     "supabase:status": "node scripts/supabase.mjs status",
     "supabase:cleanup": "node scripts/supabase-cleanup.mjs",
     "test:supabase": "node scripts/supabase.mjs status && TEXTBRIDGE_SUPABASE_TEST=1 node --experimental-strip-types --test --test-concurrency=1 tests/supabase-integration.mjs && playwright test --config=playwright.supabase.config.ts",
+    "test:saved-files": "node scripts/supabase.mjs status && TEXTBRIDGE_SUPABASE_TEST=1 node --experimental-strip-types --test tests/saved-files-integration.mjs",
     "test:share-count": "node scripts/supabase.mjs status && node --experimental-strip-types --test tests/share-count-integration.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

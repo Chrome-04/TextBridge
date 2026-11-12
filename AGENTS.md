@@ -76,7 +76,9 @@
   `npm run test:share-count` checks the local database in a rolled-back transaction.
 - `src/NotesAccount.tsx`, `src/SavedNotes.tsx`: optional email/password accounts,
   Save to Notes on Send/Receive, and a private formatted notebook at `/saved`.
-  Save text only (50,000 characters / 200,000 UTF-8 document bytes), not files.
+  Notes save text only (50,000 characters / 200,000 UTF-8 document bytes).
+  The user additionally approved a separate permanent Files tab with 20 MB total
+  file storage per registered account; see SAVED_FILES_SETUP.md.
   20 stored notes per account, manual save, search loaded notes, retained legacy pagination, optimistic revision checks,
   explicit deletion confirmation, and plain-text temporary sharing snapshots.
   Notes persist until deletion independently of sharing expiry. No Clipboard UI.
@@ -242,3 +244,29 @@
 - Owner must manually publish updated firestore.rules before the public website;
   no cloud changes are authorized by this UI request. Existing notes need no
   order migration. Existing appearance and default recency order remain supported.
+
+
+## Permanent saved files (November 12)
+
+- The user set **20,000,000 bytes total per account** for important CVs/documents,
+  not 40/50 MB per file. Notes keep their independent 20-note cap. Files are private,
+  permanent until deletion, and separate from temporary Send/Receive payloads.
+- `src/SavedFiles.tsx` and `src/saved-files-client.ts` implement the Files tab,
+  byte meter, uploads, owner downloads and confirmed deletion. Never embed uploaded
+  HTML/SVG; no saved-file sharing/preview feature was requested in this stage.
+- Supabase stores file metadata and payloads together, so quota reservation and
+  concurrent uploads are controlled atomically. It uses a new private bucket
+  `textbridge-saved` and private registry. No direct browser table/bucket policies.
+- The API verifies registered Firebase identities, not anonymous guests or
+  client-provided owner IDs. Live access also requires App Check and the existing
+  origin/live gate. Local files verify only demo-textbridge emulator accounts;
+  unsigned demo tokens must never enter the live verifier.
+- Pending/deleting bytes count toward the 20 MB total until Storage confirms
+  removal. Ready files never enter temporary-share cleanup. Existing `/cleanup`
+  handles abandoned pending uploads after 15 minutes and retries interrupted deletes.
+  Never delete a young pending upload while its Storage write may still be running.
+- Owner must manually apply 202611120001_saved_files.sql, deploy the API, and
+  publish Hosting, in that order. No cloud deployment by the assistant. The local
+  setup script refuses remote addresses and preserves existing local data.
+- `pnpm test:saved-files` is a real local API/Storage/DB integration check;
+  playwright.saved-files.config.ts covers desktop/mobile UI using local services.

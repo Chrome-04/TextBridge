@@ -3,6 +3,7 @@ import {
   importX509,
   jwtVerify,
   type JWTVerifyGetKey,
+  decodeJwt,
 } from 'jose'
 
 const certificateURL =
@@ -47,6 +48,7 @@ export function firebaseClientVerifier(
     auth: authKeys,
     appCheck: appCheckKeys,
   },
+  registeredOnly = false,
 ) {
   return async (request: Request): Promise<string | null> => {
     try {
@@ -94,9 +96,61 @@ export function firebaseClientVerifier(
         check.payload.iat > now
       )
         return null
+      const provider = (
+        auth.payload.firebase as { sign_in_provider?: string } | undefined
+      )?.sign_in_provider
+      if (
+        registeredOnly &&
+        !['password', 'google.com', 'apple.com'].includes(provider || '')
+      )
+        return null
       return `firebase:${sub}`
     } catch {
       return null
     }
+  }
+}
+
+// The unsigned demo tokens are accepted only after an emulator lookup, and this
+// verifier is installed only for the loopback-only local handler.
+export async function localFirebaseAccountVerifier(
+  request: Request,
+): Promise<string | null> {
+  try {
+    const token =
+      request.headers.get('authorization')?.replace(/^Bearer /, '') || ''
+    if (!token || token.length > 8192) return null
+    const payload = decodeJwt(token)
+    const provider = (
+      payload.firebase as { sign_in_provider?: string } | undefined
+    )?.sign_in_provider
+    if (
+      payload.aud !== 'demo-textbridge' ||
+      payload.iss !== 'https://securetoken.google.com/demo-textbridge' ||
+      !payload.sub ||
+      typeof payload.exp !== 'number' ||
+      payload.exp <= Date.now() / 1000 ||
+      !['password', 'google.com', 'apple.com'].includes(provider || '')
+    )
+      return null
+    const response = await fetch(
+      'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:lookup?key=demo-key',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: token }),
+        signal: AbortSignal.timeout(10_000),
+      },
+    )
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.users?.some(
+      (user: { localId: string; disabled?: boolean }) =>
+        user.localId === payload.sub && !user.disabled,
+    )
+      ? `firebase:${payload.sub}`
+      : null
+  } catch {
+    return null
   }
 }

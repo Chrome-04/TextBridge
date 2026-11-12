@@ -22,6 +22,11 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       proxy: {
+        '/file-api': {
+          target: 'http://127.0.0.1:54321',
+          rewrite: (path) =>
+            path.replace(/^\/file-api/, '/functions/v1/api/files'),
+        },
         '/api': {
           target: supabase ? 'http://127.0.0.1:54321' : 'http://127.0.0.1:5001',
           rewrite: (path) =>
