@@ -85,6 +85,10 @@ test.afterEach(async () => {
       { method: 'DELETE', headers: { Authorization: 'Bearer owner' } },
     )
     await fetch(
+      `http://127.0.0.1:8082/v1/projects/demo-textbridge/databases/(default)/documents/users/${account.uid}/noteState/order`,
+      { method: 'DELETE', headers: { Authorization: 'Bearer owner' } },
+    )
+    await fetch(
       'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=demo-key',
       {
         method: 'POST',
@@ -701,4 +705,125 @@ test('Google popup sign-in saves and reopens the same private library', async ({
     '1 / 20 notes saved',
   )
   await logOut(page)
+})
+
+test('expanded emojis and movable notes retain private account order', async ({
+  page,
+  context,
+}, info) => {
+  const email = `arrange-${randomUUID()}@example.test`
+  await page.goto('/saved')
+  await page.getByRole('button', { name: 'Log in or create account' }).click()
+  await signUp(page, email)
+  const profile = page.locator('.profile-avatar')
+  await expect(profile).toHaveCSS('border-radius', '10px')
+  const cards = page.locator('.saved-note-card')
+  const titles = () => cards.locator('.note-card-open strong').allTextContents()
+  for (const title of ['Alpha', 'Beta', 'Gamma']) {
+    await page.getByRole('button', { name: 'Add note', exact: true }).click()
+    await page.getByLabel('Note title', { exact: true }).fill(title)
+    const editor = page.getByRole('textbox', { name: 'Note content' })
+    await editor.fill('Start end')
+    if (title === 'Alpha') {
+      for (let caret = 0; caret < 8; caret++) await editor.press('ArrowLeft')
+      await page
+        .getByRole('button', { name: 'Insert emoji', exact: true })
+        .click()
+      const picker = page.getByRole('group', { name: 'Choose an emoji' })
+      await picker.getByRole('button', { name: 'Nature', exact: true }).click()
+      await picker
+        .getByRole('button', { name: 'Insert 🦋', exact: true })
+        .click()
+      await expect(editor).toHaveText('S🦋tart end')
+      await page
+        .getByRole('button', { name: 'Insert emoji', exact: true })
+        .click()
+      await picker
+        .getByRole('searchbox', { name: 'Search emojis' })
+        .fill('pizza')
+      await picker
+        .getByRole('button', { name: 'Insert 🍕', exact: true })
+        .click()
+      await expect(editor).toHaveText('S🦋🍕tart end')
+      await page
+        .getByRole('button', { name: 'Insert emoji', exact: true })
+        .click()
+      await picker
+        .getByRole('searchbox', { name: 'Search emojis' })
+        .fill('no-such-emoji')
+      await expect(picker).toContainText('No matching emojis.')
+      await picker.getByRole('button', { name: 'Close emojis' }).click()
+    }
+    await page.getByRole('button', { name: 'Save note', exact: true }).click()
+    await expectNoteSaved(page)
+  }
+  await expect.poll(titles).toEqual(['Gamma', 'Beta', 'Alpha'])
+  const moveAlpha = page.getByRole('button', {
+    name: 'Move Alpha',
+    exact: true,
+  })
+  if (info.project.name === 'desktop') {
+    const grip = await moveAlpha.boundingBox()
+    const target = await cards.first().boundingBox()
+    await page.mouse.move(grip!.x + grip!.width / 2, grip!.y + grip!.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(target!.x + target!.width / 2, target!.y + 40, {
+      steps: 12,
+    })
+    await page.mouse.up()
+    await expect.poll(titles).toEqual(['Alpha', 'Gamma', 'Beta'])
+  } else {
+    await moveAlpha.tap()
+    await page.getByRole('button', { name: 'Move earlier', exact: false }).tap()
+    await expect.poll(titles).toEqual(['Gamma', 'Alpha', 'Beta'])
+    await moveAlpha.focus()
+    await page.keyboard.press('ArrowUp')
+    await expect.poll(titles).toEqual(['Alpha', 'Gamma', 'Beta'])
+  }
+  await expect(page.locator('.note-save-notice')).toHaveText(
+    'Note order saved.',
+  )
+  await page.reload()
+  await expect.poll(titles).toEqual(['Alpha', 'Gamma', 'Beta'])
+  await page.getByRole('button', { name: 'Pin Beta', exact: true }).click()
+  await expect.poll(titles).toEqual(['Beta', 'Alpha', 'Gamma'])
+  await page.getByRole('button', { name: 'Move Beta', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: 'Move later', exact: false }),
+  ).toBeDisabled()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'List view' }).click()
+  await page.getByRole('button', { name: 'Move Gamma', exact: true }).focus()
+  await page.keyboard.press('ArrowUp')
+  await expect.poll(titles).toEqual(['Beta', 'Gamma', 'Alpha'])
+  await page
+    .getByRole('searchbox', { name: 'Search loaded notes' })
+    .fill('Alpha')
+  await expect(cards).toHaveCount(1)
+  await page.getByRole('searchbox', { name: 'Search loaded notes' }).clear()
+  await context.setOffline(true)
+  await page.getByRole('button', { name: 'Move Alpha', exact: true }).focus()
+  await page.keyboard.press('ArrowUp')
+  await expect(page.getByRole('alert')).toContainText('offline')
+  expect(await titles()).toEqual(['Beta', 'Gamma', 'Alpha'])
+  await context.setOffline(false)
+  await page.reload()
+  await expect.poll(titles).toEqual(['Beta', 'Gamma', 'Alpha'])
+  // A stale second device must not overwrite a newly saved board arrangement.
+  const second = await context.newPage()
+  await second.goto('/saved')
+  await logIn(second, email)
+  await expect(second.locator('.saved-note-card')).toHaveCount(3)
+  await page.getByRole('button', { name: 'Move Alpha', exact: true }).focus()
+  await page.keyboard.press('ArrowUp')
+  await expect.poll(titles).toEqual(['Beta', 'Alpha', 'Gamma'])
+  await second.getByRole('button', { name: 'Move Gamma', exact: true }).focus()
+  await second.keyboard.press('ArrowDown')
+  await expect(second.getByRole('alert')).toContainText('another device')
+  await second.close()
+  await assertLayout(page)
+  await logOut(page)
+  await logIn(page, email)
+  await expect.poll(titles).toEqual(['Beta', 'Alpha', 'Gamma'])
+  await assertLayout(page)
 })

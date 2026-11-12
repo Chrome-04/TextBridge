@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import EmojiPicker from './EmojiPicker'
+import NoteMoveHandle from './NoteMoveHandle'
 import { QRCodeSVG } from 'qrcode.react'
 import { useNotesAccount } from './NotesAccount'
 import { notesAreLocal, canUseNotes } from './firebase-session'
@@ -29,6 +31,8 @@ import {
   notesError,
   removeNote,
   saveNote,
+  saveNoteOrder,
+  type NoteOrder,
   type SavedNote,
 } from './notes-client'
 import { withShareStore } from './share-client'
@@ -52,6 +56,7 @@ function RichText({
   onChange: (value: unknown) => void
 }) {
   const [emoji, setEmoji] = useState(false)
+  const emojiSelection = useRef<{ from: number; to: number } | null>(null)
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -162,49 +167,34 @@ function RichText({
           disabled={disabled}
           aria-label="Insert emoji"
           aria-expanded={emoji}
-          onClick={() => setEmoji(!emoji)}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            emojiSelection.current = {
+              from: editor.state.selection.from,
+              to: editor.state.selection.to,
+            }
+            setEmoji(!emoji)
+          }}
         >
           ☺ Emoji
         </button>
       </div>
       {emoji && (
-        <div className="notes-emoji" role="group" aria-label="Choose an emoji">
-          {[
-            '😀',
-            '😊',
-            '😂',
-            '❤️',
-            '👍',
-            '🎉',
-            '✨',
-            '💡',
-            '✅',
-            '📌',
-            '🙏',
-            '🚀',
-            '📚',
-            '💻',
-            '☕',
-            '🌱',
-          ].map((value) => (
-            <button
-              type="button"
-              disabled={disabled}
-              key={value}
-              aria-label={`Insert ${value}`}
-              onClick={() => {
-                editor.commands.insertContent({ type: 'text', text: value })
-                editor.view.focus()
-                setEmoji(false)
-              }}
-            >
-              {value}
-            </button>
-          ))}
-          <button type="button" onClick={() => setEmoji(false)}>
-            Close
-          </button>
-        </div>
+        <EmojiPicker
+          disabled={disabled}
+          onClose={() => setEmoji(false)}
+          onSelect={(value) => {
+            editor
+              .chain()
+              .focus()
+              .setTextSelection(
+                emojiSelection.current ?? editor.state.selection.from,
+              )
+              .insertContent({ type: 'text', text: value })
+              .run()
+            setEmoji(false)
+          }}
+        />
       )}
       <EditorContent editor={editor} />
     </div>
@@ -756,6 +746,13 @@ function NotesLibrary({
   const [search, setSearch] = useState('')
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
   const [pinning, setPinning] = useState<string | null>(null)
+  const [order, setOrder] = useState<NoteOrder>({ noteIds: [], revision: 0 })
+  const [moving, setMoving] = useState(false)
+  const movingRef = useRef(false)
+  const [drag, setDrag] = useState<{
+    source: string | null
+    target: string | null
+  }>({ source: null, target: null })
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const [saveNotice, setSaveNotice] = useState('')
@@ -811,6 +808,7 @@ function NotesLibrary({
             ]
           : page.notes,
       )
+      setOrder(page.order)
       setCursor(page.cursor)
       setTotal(page.total)
       setWarning(
@@ -852,16 +850,49 @@ function NotesLibrary({
   useEffect(() => {
     if (requestedNote) void select(requestedNote)
   }, [requestedNote])
-  const visible = [...notes]
-    .sort(
-      (a, b) =>
-        Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt,
-    )
-    .filter((note) =>
-      `${note.title}\n${note.text}`
-        .toLocaleLowerCase()
-        .includes(search.toLocaleLowerCase()),
-    )
+  const position = new Map(order.noteIds.map((id, index) => [id, index]))
+  const arranged = [...notes].sort(
+    (a, b) =>
+      Number(b.pinned) - Number(a.pinned) ||
+      (position.get(a.id) ?? -1) - (position.get(b.id) ?? -1) ||
+      b.updatedAt - a.updatedAt,
+  )
+  const visible = arranged.filter((note) =>
+    `${note.title}\n${note.text}`
+      .toLocaleLowerCase()
+      .includes(search.toLocaleLowerCase()),
+  )
+  async function moveNote(source: string, target: string) {
+    if (movingRef.current || loading || pinning || draft) return
+    const from = arranged.findIndex((note) => note.id === source)
+    const to = arranged.findIndex((note) => note.id === target)
+    if (from < 0 || to < 0 || from === to) return
+    if (arranged[from].pinned !== arranged[to].pinned) {
+      setSaveNotice(
+        'Pinned notes stay above other notes. Move within the same group.',
+      )
+      return
+    }
+    const ids = arranged.map((note) => note.id)
+    ids.splice(from, 1)
+    ids.splice(to, 0, source)
+    movingRef.current = true
+    setMoving(true)
+    setError('')
+    setSaveNotice('Saving note order…')
+    try {
+      const updated = await saveNoteOrder(uid, ids, order.revision)
+      setOrder(updated)
+      setSaveNotice('Note order saved.')
+    } catch (failure) {
+      setSaveNotice('')
+      setError(notesError(failure))
+    } finally {
+      movingRef.current = false
+      setMoving(false)
+    }
+  }
+
   return (
     <div className="notes-workspace">
       <section
@@ -912,7 +943,7 @@ function NotesLibrary({
               type="button"
               aria-label="Refresh notes"
               title="Refresh notes"
-              disabled={loading}
+              disabled={loading || moving}
               onClick={() => void refresh()}
             >
               <RefreshIcon />
@@ -921,7 +952,9 @@ function NotesLibrary({
               type="button"
               className="primary-button notes-add-button"
               aria-haspopup="dialog"
-              disabled={loading || total === null || total >= MAX_SAVED_NOTES}
+              disabled={
+                loading || moving || total === null || total >= MAX_SAVED_NOTES
+              }
               onClick={() => {
                 if (!confirmLeave()) return
                 selectionRequest.current++
@@ -985,11 +1018,19 @@ function NotesLibrary({
         {!!notes.length && !visible.length && (
           <p className="notes-empty">No matching notes in the loaded list.</p>
         )}
-        <ul className={`notes-list notes-${layout}`}>
-          {visible.map((note) => (
+        <p id="notes-move-help" className="sr-only">
+          Drag a note by its grip to rearrange it, or click the grip for move
+          buttons. Use Up and Down arrow keys on a grip to move a note. Pinned
+          notes stay above other notes.
+        </p>
+        <ul className={`notes-list notes-${layout}`} aria-busy={moving}>
+          {visible.map((note, index) => (
             <li
               key={note.id}
               className="saved-note-card"
+              data-note-id={note.id}
+              data-dragging={drag.source === note.id || undefined}
+              data-drop-target={drag.target === note.id || undefined}
               data-note-colour={note.colour}
               data-pinned={note.pinned ? 'true' : 'false'}
             >
@@ -997,6 +1038,7 @@ function NotesLibrary({
                 className="note-card-open"
                 type="button"
                 aria-label={`Open note: ${note.title}`}
+                disabled={moving}
                 onClick={() => void select(note.id)}
               >
                 <strong>{note.title}</strong>
@@ -1009,39 +1051,66 @@ function NotesLibrary({
                     day: 'numeric',
                   })}
                 </time>
-                <button
-                  className="note-card-pin"
-                  type="button"
-                  aria-label={`${note.pinned ? 'Unpin' : 'Pin'} ${note.title}`}
-                  title={note.pinned ? 'Unpin note' : 'Pin note'}
-                  aria-pressed={note.pinned}
-                  disabled={pinning !== null}
-                  onClick={async () => {
-                    setPinning(note.id)
-                    setError('')
-                    try {
-                      const updated = await saveNote(
-                        uid,
-                        note.id,
-                        note.title,
-                        note.document,
-                        note.revision,
-                        { colour: note.colour, pinned: !note.pinned },
-                      )
-                      setNotes((old) =>
-                        old.map((item) =>
-                          item.id === updated.id ? updated : item,
-                        ),
-                      )
-                    } catch (failure) {
-                      setError(notesError(failure))
-                    } finally {
-                      setPinning(null)
+                <div className="note-card-tools">
+                  <NoteMoveHandle
+                    id={note.id}
+                    title={note.title}
+                    disabled={
+                      loading ||
+                      moving ||
+                      pinning !== null ||
+                      notes.length > MAX_SAVED_NOTES
                     }
-                  }}
-                >
-                  <PinIcon />
-                </button>
+                    canEarlier={
+                      index > 0 && visible[index - 1].pinned === note.pinned
+                    }
+                    canLater={
+                      index < visible.length - 1 &&
+                      visible[index + 1].pinned === note.pinned
+                    }
+                    onStep={(direction) => {
+                      const target = visible[index + direction]
+                      if (target) void moveNote(note.id, target.id)
+                    }}
+                    onMove={(source, target) => {
+                      void moveNote(source, target)
+                    }}
+                    onDrag={(source, target) => setDrag({ source, target })}
+                  />
+                  <button
+                    className="note-card-pin"
+                    type="button"
+                    aria-label={`${note.pinned ? 'Unpin' : 'Pin'} ${note.title}`}
+                    title={note.pinned ? 'Unpin note' : 'Pin note'}
+                    aria-pressed={note.pinned}
+                    disabled={pinning !== null || moving || loading}
+                    onClick={async () => {
+                      setPinning(note.id)
+                      setError('')
+                      try {
+                        const updated = await saveNote(
+                          uid,
+                          note.id,
+                          note.title,
+                          note.document,
+                          note.revision,
+                          { colour: note.colour, pinned: !note.pinned },
+                        )
+                        setNotes((old) =>
+                          old.map((item) =>
+                            item.id === updated.id ? updated : item,
+                          ),
+                        )
+                      } catch (failure) {
+                        setError(notesError(failure))
+                      } finally {
+                        setPinning(null)
+                      }
+                    }}
+                  >
+                    <PinIcon />
+                  </button>
+                </div>
               </div>
             </li>
           ))}
@@ -1050,7 +1119,7 @@ function NotesLibrary({
           <>
             <button
               className="secondary-button"
-              disabled={loading}
+              disabled={loading || moving}
               onClick={() => void refresh(true)}
             >
               Load more notes

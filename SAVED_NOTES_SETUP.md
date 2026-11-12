@@ -8,7 +8,7 @@ version stays as it is until you complete the steps below.
 
 - **React + TypeScript**: the account screens, Saved library, and editor.
 - **Tiptap**: editable document formatting: bold, italic, underline, lists, undo,
-  redo, and a small emoji picker. Text is validated as document JSON; shared text
+  redo, and a searchable emoji picker with categories. Text is validated as document JSON; shared text
   never becomes HTML.
 - **Firebase Authentication**: Google sign-in, email/password signup, login, logout, password reset.
   Anonymous Authentication remains available for visitors who only share text.
@@ -107,7 +107,13 @@ requests to 30 notes, and enforces 20 stored notes through an atomic private quo
 exemptions keep the document body, plain text, title, colour, and pin settings out of automatic indexes;
 the library loads notes by `updatedAt`, displays pinned notes first, and searches
 already-loaded notes locally.
-Publish the updated rules before the website so it can save note colours and pins.
+Publish the updated rules before the website so it can save note colours, pins,
+and card positions. Card order lives in the private
+`users/{uid}/noteState/order` document. It contains only up to 20 of the owner's
+note IDs, a revision, and a server timestamp. It does not change note content or
+the 20-note registry. Existing accounts need no order backfill: their notes keep
+the previous pinned/recent order until rearranged. Concurrent order changes are
+rejected with a refresh message instead of silently overwriting another device.
 Older notes appear with the default colour and start unpinned. Appearance alone
 requires no data migration.
 
@@ -146,6 +152,11 @@ tokens. Keep the previously required Supabase live configuration and cleanup job
 3. Open **Add note** to create a new note, or open an existing card to edit it.
    Try bold, italic, lists, emoji, and a colour. **Save note** returns you to the
    board once Firestore confirms the save. Pin the card to keep it near the top.
+   Drag a card by its six-dot grip to rearrange it. Click or tap the grip for
+   **Move earlier / Move later**, or focus it and use Up/Down arrow keys. Moves
+   stay within the pinned/unpinned group. Refresh or sign in on another device
+   to confirm the saved order. On older accounts with more than 20 loaded notes,
+   reduce to the current limit before rearranging.
 4. Log into the same account on another device. Use the header bookmark and refresh the list.
    Your note should be there with its formatting, colour, and pin setting.
 5. Choose **Share note**, select 5 or 10 minutes, and generate a code. Receive it

@@ -19,6 +19,12 @@ setup, Firestore database/rules, and website redeployment. Follow
 [SAVED_NOTES_SETUP.md](./SAVED_NOTES_SETUP.md) step by step. Nothing is deployed
 automatically. Notes save text only, up to 50,000 characters; no Clipboard feature.
 
+Notes can be rearranged by their six-dot grip, touch-friendly move buttons, or
+Up/Down keys while the grip has focus. Positions are saved privately to the
+account; pinned notes stay first. The editor includes a searchable emoji picker
+with categories. Publish the updated Firestore rules before deploying this
+version; see SAVED_NOTES_SETUP.md.
+
 ## Start in VS Code
 
 Use Node 24 and pnpm 11.25.0. From this project folder:

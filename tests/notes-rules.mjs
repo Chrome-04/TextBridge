@@ -164,6 +164,48 @@ test(
       await denied(
         create(alice, 'invalid', { ...payload(), createdAt: new Date(0) }),
       )
+      const orderPath = `users/${alice.user.uid}/noteState/order`
+      const arrangement = (revision, noteIds = ['test']) => ({
+        noteIds,
+        revision,
+        updatedAt: serverTimestamp(),
+      })
+      await setDoc(doc(alice.db, orderPath), arrangement(1))
+      assert.deepEqual(
+        (await getDocFromServer(doc(alice.db, orderPath))).data().noteIds,
+        ['test'],
+      )
+      await denied(getDocFromServer(doc(bob.db, orderPath)))
+      await denied(getDocFromServer(doc(guest.db, orderPath)))
+      await denied(setDoc(doc(bob.db, orderPath), arrangement(2)))
+      await denied(setDoc(doc(guest.db, orderPath), arrangement(2)))
+      await denied(
+        setDoc(doc(alice.db, orderPath), arrangement(2, ['missing'])),
+      )
+      await denied(
+        setDoc(doc(alice.db, orderPath), arrangement(2, ['test', 'test'])),
+      )
+      await denied(
+        setDoc(
+          doc(alice.db, orderPath),
+          arrangement(2, Array(21).fill('test')),
+        ),
+      )
+      await denied(setDoc(doc(alice.db, orderPath), arrangement(2, [123])))
+      await denied(
+        setDoc(doc(alice.db, orderPath), { ...arrangement(2), extra: true }),
+      )
+      await denied(
+        setDoc(doc(alice.db, orderPath), {
+          ...arrangement(2),
+          updatedAt: new Date(0),
+        }),
+      )
+      await denied(setDoc(doc(alice.db, orderPath), arrangement(1)))
+      await setDoc(doc(alice.db, orderPath), arrangement(2, []))
+      await denied(setDoc(doc(alice.db, orderPath), arrangement(2)))
+      await setDoc(doc(alice.db, orderPath), arrangement(3))
+      await denied(deleteDoc(doc(alice.db, orderPath)))
       await updateDoc(doc(alice.db, path), {
         title: 'Updated',
         revision: 2,
@@ -296,6 +338,10 @@ test(
           )
         await fetch(
           `http://127.0.0.1:8082/v1/projects/demo-textbridge/databases/(default)/documents/users/${user.uid}/noteState/quota`,
+          { method: 'DELETE', headers: { Authorization: 'Bearer owner' } },
+        )
+        await fetch(
+          `http://127.0.0.1:8082/v1/projects/demo-textbridge/databases/(default)/documents/users/${user.uid}/noteState/order`,
           { method: 'DELETE', headers: { Authorization: 'Bearer owner' } },
         )
         await deleteUser(user)

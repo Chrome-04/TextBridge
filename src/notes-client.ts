@@ -72,7 +72,7 @@ export async function loadNotes(
   uid: string,
   cursor?: QueryDocumentSnapshot<DocumentData>,
 ) {
-  const [usage, result] = await Promise.all([
+  const [usage, result, arrangement] = await Promise.all([
     getDocFromServer(doc(db(), 'users', uid, 'noteState', 'quota')),
     getDocsFromServer(
       query(
@@ -82,6 +82,7 @@ export async function loadNotes(
         limit(30),
       ),
     ),
+    getDocFromServer(doc(db(), 'users', uid, 'noteState', 'order')),
   ])
   // A malformed record must not prevent access to the rest of the library.
   const notes: SavedNote[] = []
@@ -95,6 +96,9 @@ export async function loadNotes(
   }
   return {
     notes,
+    order: arrangement.exists()
+      ? decodeOrder(arrangement.data())
+      : { noteIds: [], revision: 0 },
     total: usage.exists()
       ? Object.keys(quotaIds(usage.data())).length
       : result.empty && !cursor
@@ -107,6 +111,59 @@ export async function loadNotes(
     unreadable,
   }
 }
+export type NoteOrder = { noteIds: string[]; revision: number }
+function decodeOrder(data: DocumentData): NoteOrder {
+  if (
+    !Array.isArray(data.noteIds) ||
+    data.noteIds.length > MAX_SAVED_NOTES ||
+    data.noteIds.some((id: unknown) => typeof id !== 'string') ||
+    new Set(data.noteIds).size !== data.noteIds.length ||
+    !Number.isInteger(data.revision) ||
+    data.revision < 1
+  )
+    throw new Error(
+      'Your saved note order could not be read. Refresh and try again.',
+    )
+  return { noteIds: data.noteIds, revision: data.revision }
+}
+export async function saveNoteOrder(
+  uid: string,
+  noteIds: string[],
+  revision: number,
+): Promise<NoteOrder> {
+  owner(uid)
+  if (!navigator.onLine)
+    throw new Error('You’re offline. Reconnect to move your notes.')
+  if (
+    noteIds.length > MAX_SAVED_NOTES ||
+    new Set(noteIds).size !== noteIds.length
+  )
+    throw new Error('Load up to 20 notes to rearrange your library.')
+  const ref = doc(db(), 'users', uid, 'noteState', 'order')
+  return runTransaction(db(), async (transaction) => {
+    owner(uid)
+    const previous = await transaction.get(ref)
+    const current = previous.exists()
+      ? decodeOrder(previous.data())
+      : { noteIds: [], revision: 0 }
+    if (current.revision !== revision)
+      throw new Error(
+        'Your note order changed on another device. Refresh notes and try again.',
+      )
+    const quota = await transaction.get(
+      doc(db(), 'users', uid, 'noteState', 'quota'),
+    )
+    const ids = quota.exists() ? quotaIds(quota.data()) : {}
+    if (noteIds.some((id) => !ids[id]))
+      throw new Error(
+        'A note was removed on another device. Refresh notes and try again.',
+      )
+    const result = { noteIds, revision: current.revision + 1 }
+    transaction.set(ref, { ...result, updatedAt: serverTimestamp() })
+    return result
+  })
+}
+
 export async function loadNote(uid: string, id: string) {
   const result = await getDocFromServer(doc(owner(uid), id))
   if (!result.exists())

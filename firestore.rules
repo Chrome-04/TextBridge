@@ -65,6 +65,20 @@ service cloud.firestore {
         && request.resource.data.revision == resource.data.revision + 1;
       allow delete: if noteOwner(uid) && noteQuotaChange(uid, noteId, false);
     }
+    match /users/{uid}/noteState/order {
+      allow get: if noteOwner(uid);
+      allow create, update: if noteOwner(uid)
+        && request.resource.data.keys().hasAll(['noteIds', 'revision', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['noteIds', 'revision', 'updatedAt'])
+        && request.resource.data.noteIds is list
+        && request.resource.data.noteIds.size() <= 20
+        && request.resource.data.noteIds.toSet().size() == request.resource.data.noteIds.size()
+        && request.resource.data.noteIds.hasOnly(beforeIds(uid).keys())
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.revision is int
+        && (resource == null ? request.resource.data.revision == 1
+          : request.resource.data.revision == resource.data.revision + 1);
+    }
     match /users/{uid}/noteState/quota {
       allow get: if noteOwner(uid);
       allow create, update: if noteOwner(uid) && validQuota(request.resource.data) && quotaChange(uid);

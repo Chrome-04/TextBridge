@@ -225,3 +225,20 @@
 - No Apple OAuth entry point or button. Do not re-add or enable it without asking.
   Preserve existing account/note data and legacy owner-rule compatibility.
 - No cloud settings were changed. Publication remains the owner's manual task.
+
+
+## Emoji and note arrangement update (November 12)
+
+- User requested more emojis, movable note cards, and a rounded-square account
+  avatar. The picker has named categories and local search; preserve the editor
+  selection across search/category interaction. No remote emoji service.
+- Move cards using the six-dot pointer/touch grip, its earlier/later buttons, or
+  keyboard Up/Down. Pinned notes remain first. Persist order in owner-only
+  `users/{uid}/noteState/order`, independent of note content, revisions, and quota.
+  The arrangement has up to 20 unique existing note IDs, its own revision and
+  server timestamp. Refresh before retrying a stale-device arrangement.
+- No localStorage private-note or order persistence. Failed/offline moves retain
+  the last confirmed arrangement. Clear the library/order when switching accounts.
+- Owner must manually publish updated firestore.rules before the public website;
+  no cloud changes are authorized by this UI request. Existing notes need no
+  order migration. Existing appearance and default recency order remain supported.

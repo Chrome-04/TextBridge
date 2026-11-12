@@ -19,7 +19,7 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 12px;
 }
 .profile-avatar {
   display: grid;
@@ -27,7 +27,7 @@
   width: 34px;
   height: 34px;
   border: 1px solid var(--border-strong);
-  border-radius: 50%;
+  border-radius: 10px;
   background: var(--surface-raised);
   color: var(--accent);
   font-size: 15px;
@@ -1047,4 +1047,112 @@
   .note-swatch[aria-pressed='true'] {
     outline-color: Highlight;
   }
+}
+
+.notes-emoji {
+  display: block;
+}
+.emoji-picker-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.emoji-picker-head input {
+  min-width: 0;
+  flex: 1;
+  padding: 8px 12px;
+  min-height: 40px;
+  font-size: 14px;
+}
+.emoji-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-block: 8px;
+}
+.emoji-categories button[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.emoji-grid button {
+  font-size: 22px;
+}
+.emoji-grid p {
+  grid-column: 1 / -1;
+}
+.saved-note-card {
+  position: relative;
+  overflow: visible;
+}
+.saved-note-card:focus-within {
+  z-index: 2;
+}
+.saved-note-card[data-dragging='true'] {
+  opacity: 0.65;
+}
+.saved-note-card[data-drop-target='true'] {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.note-card-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.note-move-control {
+  position: relative;
+}
+.note-move-handle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.note-move-handle:active {
+  cursor: grabbing;
+}
+.note-move-handle:hover {
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+.note-move-handle:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.note-move-options {
+  position: absolute;
+  right: -44px;
+  bottom: 46px;
+  z-index: 3;
+  display: grid;
+  min-width: 164px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: 0 8px 24px #0002;
+}
+.note-move-options button {
+  min-height: 44px;
+  text-align: left;
+  padding: 8px;
+  border-radius: 6px;
+}
+.note-move-options button:hover {
+  background: var(--surface-raised);
+}
+.note-move-options button:disabled {
+  opacity: 0.4;
 }
